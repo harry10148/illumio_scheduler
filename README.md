@@ -25,7 +25,7 @@
     * 自動將排程狀態（如 `[📅 排程: 每天 08:00 啟動]`）寫入 Illumio 規則的 **Description** 欄位。
     * 刪除排程時，自動清除該標記，保持 Description 整潔。
 
-* **⚙️ 企業級架構**
+* **⚙️ 架構**
     * **背景監控**：支援 Linux Systemd Service，開機自動在背景執行檢查。
     * **混合搜尋**：支援 ID 直達、關鍵字模糊搜尋、分頁瀏覽。
     * **ANSI 色彩介面**：支援紅綠燈號狀態顯示 (`✔ ON` / `✖ OFF`)。
@@ -34,7 +34,7 @@
 
 ## 🛠️ 環境準備與安裝
 
-本程式基於 Python 3 開發，依賴 `requests` 模組。建議安裝於 `/opt/illumio_scheduler`。
+基於 Python 3 開發，依賴 `requests` 模組。建議安裝於 `/opt/illumio_scheduler`。
 
 ### 第一步：安裝 Python 與相依套件
 
