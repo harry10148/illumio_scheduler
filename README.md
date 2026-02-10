@@ -4,7 +4,9 @@
 ![Platform](https://img.shields.io/badge/Platform-Linux-orange?logo=linux&logoColor=white)
 ![Status](https://img.shields.io/badge/Status-Production%20Ready-green)
 
-這是一個針對 **Illumio Core (PCE)** 設計的進階自動化排程工具。它允許管理者透過互動式 CLI 介面，設定特定「規則 (Rule)」或「規則集 (RuleSet)」的生效時段，並透過背景服務自動執行狀態切換與發布 (Provisioning)。
+這是一個針對 **Illumio Core (PCE)** 設計的進階自動化排程工具。它允許管理者透過互動式 CLI 介面，設定特定「規則 (Rule)」或「規則集 (RuleSet)」的生效時段，並透過背景服務自動執行狀態切換與發布 (Provisioning)。  
+<img width="630" height="648" alt="image" src="https://github.com/user-attachments/assets/e67c0d43-b8dc-4aee-afd0-a849b9019138" />  
+
 
 ---
 
