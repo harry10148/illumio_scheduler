@@ -1,3 +1,4 @@
+
 # 🕒 Illumio Rule Scheduler (CLI)
 
 ![Python](https://img.shields.io/badge/Python-3.6%2B-blue?logo=python&logoColor=white)
@@ -6,8 +7,6 @@
 
 這是一個針對 **Illumio Core (PCE)** 設計的進階自動化排程工具。它允許管理者透過互動式 CLI 介面，設定特定「規則 (Rule)」或「規則集 (RuleSet)」的生效時段，並透過背景服務自動執行狀態切換與發布 (Provisioning)。  
 <img width="630" height="648" alt="image" src="https://github.com/user-attachments/assets/e67c0d43-b8dc-4aee-afd0-a849b9019138" />  
-
-
 ---
 
 ## ✨ 核心功能
@@ -25,7 +24,7 @@
     * 自動將排程狀態（如 `[📅 排程: 每天 08:00 啟動]`）寫入 Illumio 規則的 **Description** 欄位。
     * 刪除排程時，自動清除該標記，保持 Description 整潔。
 
-* **⚙️ 架構**
+* **⚙️ 企業級架構**
     * **背景監控**：支援 Linux Systemd Service，開機自動在背景執行檢查。
     * **混合搜尋**：支援 ID 直達、關鍵字模糊搜尋、分頁瀏覽。
     * **ANSI 色彩介面**：支援紅綠燈號狀態顯示 (`✔ ON` / `✖ OFF`)。
@@ -34,22 +33,25 @@
 
 ## 🛠️ 環境準備與安裝
 
-基於 Python 3 開發，依賴 `requests` 模組。建議安裝於 `/opt/illumio_scheduler`。
+本程式基於 Python 3 開發，依賴 `requests` 模組。建議安裝於 `/opt/illumio_scheduler`。
 
-### 第一步：安裝 Python 與相依套件
+### 1. 安裝 Python 與相依套件
 
 請依照您的作業系統選擇指令：
 
 **針對 Red Hat Enterprise Linux (RHEL) 8/9, Rocky Linux, AlmaLinux**
 
 1. 更新系統並安裝 Python 3 與 Pip
-sudo dnf update -y sudo dnf install python3 python3-pip -y
+sudo dnf update -y
+sudo dnf install python3 python3-pip -y
 
 2. 建立專案目錄
-sudo mkdir -p /opt/illumio_scheduler cd /opt/illumio_scheduler
+sudo mkdir -p /opt/illumio_scheduler
+cd /opt/illumio_scheduler
 
 3. 建立虛擬環境 (強烈建議)
-python3 -m venv venv source venv/bin/activate
+python3 -m venv venv
+source venv/bin/activate
 
 4. 安裝依賴
 pip install requests
@@ -60,19 +62,22 @@ pip install requests
 **針對 Ubuntu 20.04 / 22.04 / 24.04, Debian**
 
 1. 更新並安裝 Python 3
-sudo apt update sudo apt install python3 python3-pip python3-venv -y
+sudo apt update
+sudo apt install python3 python3-pip python3-venv -y
 
 2. 建立專案目錄
-sudo mkdir -p /opt/illumio_scheduler cd /opt/illumio_scheduler
+sudo mkdir -p /opt/illumio_scheduler
+cd /opt/illumio_scheduler
 
 3. 建立虛擬環境
-python3 -m venv venv source venv/bin/activate
+python3 -m venv venv
+source venv/bin/activate
 
 4. 安裝依賴
 pip install requests
 
 
-### 第二步：部署腳本
+### 2. 部署腳本
 
 將 `illumio_scheduler.py` 上傳至 `/opt/illumio_scheduler` 目錄並賦予執行權限：
 
@@ -116,17 +121,24 @@ chmod +x illumio_scheduler.py
 
 建立 `/etc/systemd/system/illumio-scheduler.service` 檔案：
 
-[Unit] Description=Illumio Rule Auto-Scheduler Service After=network.target
+[Unit]
+Description=Illumio Rule Auto-Scheduler Service
+After=network.target
 
-[Service] Type=simple User=root
+[Service]
+Type=simple
+User=root
 
 設定工作目錄 (非常重要，確保能讀取到 config.json)
 WorkingDirectory=/opt/illumio_scheduler
 
 指向 venv 中的 python，並加上 --monitor 參數
-ExecStart=/opt/illumio_scheduler/venv/bin/python3 illumio_scheduler.py --monitor Restart=always RestartSec=10
+ExecStart=/opt/illumio_scheduler/venv/bin/python3 illumio_scheduler.py --monitor
+Restart=always
+RestartSec=10
 
-[Install] WantedBy=multi-user.target
+[Install]
+WantedBy=multi-user.target
 
 
 ### 2. 啟動服務
@@ -165,3 +177,6 @@ sudo journalctl -u illumio-scheduler -f
 4.  **檔案保存**
     * `config.json`: 存放 API 金鑰，請妥善保護。
     * `rule_schedules.json`: 存放排程資料庫，請勿隨意手動修改。
+
+---
+
