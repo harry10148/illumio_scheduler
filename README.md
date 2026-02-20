@@ -1,10 +1,10 @@
 # Illumio Rule Scheduler (v4.1.0)
 
 ![Version](https://img.shields.io/badge/Version-v4.1.0-blue)
-![Python](https://img.shields.io/badge/Python-3.8%2B-blue?logo=python&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.8%2B-gold?logo=python&logoColor=white)
 ![Dependencies](https://img.shields.io/badge/Dependencies-Zero-brightgreen)
 
-| [English](README.md) | [繁體中文](README.zh-TW.md) |
+> [English](README.md) | [繁體中文](README.zh-TW.md)
 
 ---
 
