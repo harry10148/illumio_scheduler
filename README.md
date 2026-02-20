@@ -56,6 +56,10 @@ sudo mkdir -p /opt/illumio_scheduler
 cd /opt/illumio_scheduler
 # Copy project files here
 chmod +x illumio_scheduler.py
+
+# Linux GUI Support (if using --gui):
+# Ubuntu/Debian: sudo apt install python3-tk
+# RHEL/Rocky:   sudo dnf install python3-tkinter
 ```
 
 **Windows**:
