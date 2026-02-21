@@ -360,6 +360,19 @@ class PCEClient:
                 return res
         return res  # return last response for error handling
 
+    def get_provision_state(self, href):
+        """Check provision state: 'active' if provisioned, 'draft' if draft-only, 'unknown' on error"""
+        active_href = href.replace("/draft/", "/active/")
+        res = self._api_get(active_href)
+        if res is None:
+            return 'unknown'
+        if res.status_code == 200:
+            return 'active'
+        return 'draft'
+
+    def is_provisioned(self, href):
+        return self.get_provision_state(href) == 'active'
+
 # ==========================================
 # 5. Schedule Engine (Core Logic)
 # ==========================================

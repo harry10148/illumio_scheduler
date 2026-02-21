@@ -127,6 +127,9 @@ class CLI:
         rid = Colors.id(extract_id(rs['href']))
         name = truncate(rs['name'], 40)
         
+        ut = rs.get('update_type')
+        prov_state = f"{Colors.YELLOW}DRAFT{Colors.RESET}" if ut else f"{Colors.GREEN}ACTIVE{Colors.RESET}"
+        
         sType = self.db.get_schedule_type(rs)
         if sType == 1:
             mark = Colors.mark_self()
@@ -135,7 +138,7 @@ class CLI:
         else:
             mark = " "
         
-        return f"{idx:<4} | {mark} | {rid:<18} | {status:<15} | Rules:{r_count:<4} | {name}"
+        return f"{idx:<4} | {mark} | {rid:<18} | {prov_state:<15} | {status:<15} | Rules:{r_count:<4} | {name}"
 
     def format_rule_row(self, idx, r):
         rid = Colors.id(extract_id(r['href']))
@@ -148,10 +151,13 @@ class CLI:
         dst = truncate(self.pce.resolve_actor_str(r.get('providers', [])), 15)
         svc = truncate(self.pce.resolve_service_str(r.get('ingress_services', [])), 10)
         
+        ut = r.get('update_type')
+        prov_state = f"{Colors.YELLOW}DRAFT{Colors.RESET}" if ut else f"{Colors.GREEN}ACTIVE{Colors.RESET}"
+        
         is_sched = r['href'] in self.db.get_all()
         mark = Colors.mark_self() if is_sched else " " 
         
-        return f"{idx:<4} | {mark} | {rid:<18} | {status:<15} | {note:<30} | {src:<15} | {dst:<15} | {svc}"
+        return f"{idx:<4} | {mark} | {rid:<18} | {prov_state:<15} | {status:<15} | {note:<30} | {src:<15} | {dst:<15} | {svc}"
 
     # ==========================================
     # Unified Schedule Management (List + Edit + Delete in one view)
@@ -325,7 +331,7 @@ class CLI:
 
         if not selected_rs:
             if not matches: return print(f"{Colors.RED}[-] {t('browse_no_result')}{Colors.RESET}")
-            header = f"{t('hdr_no'):<4} | {t('hdr_sch'):<1} | {t('hdr_id'):<8} | {t('hdr_status'):<6} | {t('hdr_rules'):<9} | {t('hdr_name')}"
+            header = f"{t('hdr_no'):<4} | {t('hdr_sch'):<1} | {t('hdr_id'):<8} | {'PROV':<15} | {t('hdr_status'):<6} | {t('hdr_rules'):<9} | {t('hdr_name')}"
             selected_rs = paginate_and_select(matches, self.format_ruleset_row, title="RuleSets", header_str=header)
             if not selected_rs: return
 
@@ -350,7 +356,7 @@ class CLI:
             rules = full_rs.get('rules', [])
             if not rules: return print(f"{Colors.RED}[-] {t('browse_no_rules')}{Colors.RESET}")
 
-            header = f"{t('hdr_no'):<4} | {t('hdr_sch'):<1} | {t('hdr_id'):<6} | {t('hdr_status'):<6} | {t('hdr_note'):<30} | {t('hdr_source'):<15} | {t('hdr_dest'):<15} | {t('hdr_service')}"
+            header = f"{t('hdr_no'):<4} | {t('hdr_sch'):<1} | {t('hdr_id'):<6} | {'PROV':<15} | {t('hdr_status'):<6} | {t('hdr_note'):<30} | {t('hdr_source'):<15} | {t('hdr_dest'):<15} | {t('hdr_service')}"
             r = paginate_and_select(rules, self.format_rule_row, title=f"Rules ({rs_name})", header_str=header)
             if not r: return
 
@@ -361,6 +367,11 @@ class CLI:
             meta_dst = self.pce.resolve_actor_str(r.get('providers', []))
             meta_svc = self.pce.resolve_service_str(r.get('ingress_services', []))
         else: return
+
+        # Block draft-only scheduling
+        if not self.pce.is_provisioned(target_href):
+            print(f"{Colors.RED}[!] Cannot schedule a draft-only (unprovisioned) rule. Please provision it first.{Colors.RESET}")
+            return
 
         if target_href in self.db.get_all():
             print(f"{Colors.YELLOW}[!] {t('sch_exists_warn')}{Colors.RESET}")

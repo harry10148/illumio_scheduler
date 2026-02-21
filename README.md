@@ -19,9 +19,10 @@ An automated rule scheduling tool for **Illumio Core (PCE)**. Supports **Web GUI
 | 📅 **Recurring Schedule** | Enable/disable rules on a weekly schedule (supports cross-midnight, e.g. 22:00–06:00) |
 | ⏳ **Auto-Expiration** | One-time rules that auto-disable and self-delete after a set time |
 | 🖥️ **Web GUI + CLI** | Flask-powered Web GUI (auto-opens browser); ANSI CLI for SSH/terminal |
-| 🌐 **i18n** | Language switching: English (default) and Traditional Chinese |
-| 👁️ **Dual Indicators** | ★ = RuleSet scheduled, ● = child rule scheduled |
-| 📝 **Note Integration** | Automatically writes schedule info into the Illumio rule Description field |
+| 🌐 **i18n Support** | Language toggle between English (default) and Traditional Chinese |
+| 👁️ **Visual Indicators** | `PROV` state (ACTIVE/DRAFT), symbols (★ = RS scheduled, ● = Child rule) |
+| 🛡️ **Draft Safety** | Prevents scheduling of unprovisioned (draft-only) rules |
+| 📝 **Note Integration** | Automatically writes schedule status to Illumio `description` field |
 | 🔄 **Dependency-Aware Provisioning** | Discovers and includes all PCE dependencies before provisioning |
 | 🛡️ **Zero Core Dependencies** | Core engine and CLI use only Python standard library |
 

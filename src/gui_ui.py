@@ -26,26 +26,36 @@ def create_app(core_system):
     def index():
         return Response(_HTML_PAGE, content_type='text/html; charset=utf-8')
 
-    # ── RuleSets ──
+    # ── RuleSets (with pagination) ──
     @app.route('/api/rulesets')
     def api_rulesets():
         kw = request.args.get('q', '')
+        page = int(request.args.get('page', 1))
+        size = int(request.args.get('size', 50))
         if kw:
             rs_list = pce.search_rulesets(kw)
         else:
             rs_list = pce.get_all_rulesets(force_refresh=True)
+        total = len(rs_list)
+        start = (page - 1) * size
+        end = start + size
+        paginated = rs_list[start:end]
         result = []
-        for rs in rs_list:
+        for rs in paginated:
             href = rs['href']
             st = db.get_schedule_type(rs)
+            # update_type: null=provisioned, "create"=new draft, "update"=modified draft
+            ut = rs.get('update_type')
+            prov = 'draft' if ut else 'active'
             result.append({
                 'href': href,
                 'id': extract_id(href),
                 'name': rs.get('name',''),
                 'enabled': rs.get('enabled', False),
-                'sch': '★' if st == 1 else ('●' if st == 2 else ''),
+                'sch': 'star' if st == 1 else ('dot' if st == 2 else ''),
+                'prov': prov,
             })
-        return jsonify(result)
+        return jsonify({'items': result, 'total': total, 'page': page, 'size': size, 'pages': (total + size - 1) // size})
 
     @app.route('/api/rulesets/<rs_id>')
     def api_ruleset_detail(rs_id):
@@ -54,20 +64,25 @@ def create_app(core_system):
         if not rs:
             return jsonify({'error': 'Not found'}), 404
         rules = []
-        # RuleSet self row
         rs_href = rs['href']
+        rs_ut = rs.get('update_type')
+        rs_prov = 'draft' if rs_ut else 'active'
+        # RuleSet self row
         rules.append({
             'href': rs_href,
             'id': extract_id(rs_href),
             'desc': '▶ [ENTIRE RULESET]',
             'enabled': rs.get('enabled', False),
             'src': 'ALL', 'dst': 'ALL', 'svc': 'ALL',
-            'sch': '★' if rs_href in db.get_all() else '',
+            'sch': 'star' if rs_href in db.get_all() else '',
             'is_ruleset': True,
+            'prov': rs_prov,
         })
         for r in rs.get('rules', []):
             href = r['href']
             dest = r.get('destinations', r.get('consumers', []))
+            r_ut = r.get('update_type', rs_ut)  # rules inherit RS provision if no own field
+            r_prov = 'draft' if r_ut else 'active'
             rules.append({
                 'href': href,
                 'id': extract_id(href),
@@ -76,8 +91,9 @@ def create_app(core_system):
                 'src': truncate(pce.resolve_actor_str(dest), 30),
                 'dst': truncate(pce.resolve_actor_str(r.get('providers', [])), 30),
                 'svc': truncate(pce.resolve_service_str(r.get('ingress_services', [])), 25),
-                'sch': '★' if href in db.get_all() else '',
+                'sch': 'star' if href in db.get_all() else '',
                 'is_ruleset': False,
+                'prov': r_prov,
             })
         return jsonify({'name': rs['name'], 'href': rs_href, 'rules': rules})
 
@@ -485,6 +501,20 @@ tr.selected { background: #1c3a5e !important; }
   cursor: pointer; font-size: 13px; color: var(--fg);
 }
 .radio-group input[type="radio"] { accent-color: var(--accent); }
+
+/* ── Schedule & Provision badges ── */
+.sch-star { color: #f0a500; font-size: 14px; }
+.sch-dot { color: #58a6ff; font-size: 14px; }
+.badge-prov { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
+.prov-active { background: #16a34a22; color: #4ade80; border: 1px solid #16a34a44; }
+.prov-draft { background: #f59e0b22; color: #fbbf24; border: 1px solid #f59e0b44; }
+
+/* ── Pagination ── */
+.pagination { display: flex; align-items: center; gap: 6px; padding: 8px 0; font-size: 12px; color: var(--fg-dim); }
+.pagination button { background: var(--bg-card); border: 1px solid var(--border); color: var(--fg); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+.pagination button:hover { border-color: var(--accent); }
+.pagination button:disabled { opacity: 0.3; cursor: default; }
+.pagination .page-info { margin: 0 4px; }
 </style>
 </head>
 <body>
@@ -522,9 +552,10 @@ tr.selected { background: #1c3a5e !important; }
     <div>
       <div class="pane-header"><h3>RuleSets</h3><span id="rs-count" style="color:var(--fg-dim);font-size:12px"></span></div>
       <div class="table-wrap">
-        <table><thead><tr><th style="width:50px">⚡</th><th>Name</th><th style="width:60px">ID</th><th style="width:30px">📅</th></tr></thead>
+        <table><thead><tr><th style="width:50px">⚡</th><th>Name</th><th style="width:60px">ID</th><th style="width:55px">PROV</th><th style="width:30px">📅</th></tr></thead>
         <tbody id="rs-table"></tbody></table>
       </div>
+      <div class="pagination" id="rs-pagination"></div>
     </div>
     <!-- Right: Rules -->
     <div>
@@ -533,7 +564,7 @@ tr.selected { background: #1c3a5e !important; }
         <button class="btn btn-accent" onclick="openScheduleModal()">＋ Schedule Selected</button>
       </div>
       <div class="table-wrap">
-        <table><thead><tr><th style="width:50px">⚡</th><th style="width:60px">ID</th><th>Description</th><th>Source</th><th>Dest</th><th>Service</th><th style="width:30px">📅</th></tr></thead>
+        <table><thead><tr><th style="width:50px">⚡</th><th style="width:60px">ID</th><th>Description</th><th>Source</th><th>Dest</th><th>Service</th><th style="width:55px">PROV</th><th style="width:30px">📅</th></tr></thead>
         <tbody id="rules-table"></tbody></table>
       </div>
     </div>
@@ -632,39 +663,83 @@ function showTab(name) {
   if (name === 'settings') loadConfig();
 }
 
-// ━━━ RuleSets ━━━
-async function loadAllRS() {
+// ━━━ Helpers ━━━
+let currentPage = 1;
+let currentSearch = '';
+function schIcon(type) {
+  if (type === 'star') return '<span class="sch-star">★</span>';
+  if (type === 'dot') return '<span class="sch-dot">●</span>';
+  return '';
+}
+function provBadge(prov) {
+  if (prov === 'active') return '<span class="badge-prov prov-active">ACTIVE</span>';
+  return '<span class="badge-prov prov-draft">DRAFT</span>';
+}
+
+// ━━━ RuleSets (paginated) ━━━
+async function loadAllRS(page) {
+  currentSearch = '';
+  currentPage = page || 1;
   try {
-    const res = await fetch('/api/rulesets');
+    const res = await fetch(`/api/rulesets?page=${currentPage}&size=50`);
     const data = await res.json();
     renderRS(data);
   } catch(e) { toast('Failed to load RuleSets: ' + e.message, 'error'); }
 }
 async function searchRS() {
-  const q = document.getElementById('search-input').value;
+  currentSearch = document.getElementById('search-input').value;
+  currentPage = 1;
   try {
-    const res = await fetch('/api/rulesets?q=' + encodeURIComponent(q));
+    const res = await fetch(`/api/rulesets?q=${encodeURIComponent(currentSearch)}&page=1&size=50`);
     const data = await res.json();
     renderRS(data);
   } catch(e) { toast('Search failed: ' + e.message, 'error'); }
 }
-function renderRS(list) {
+function renderRS(data) {
+  const list = data.items;
   const tb = document.getElementById('rs-table');
   tb.innerHTML = '';
-  document.getElementById('rs-count').textContent = list.length + ' items';
+  document.getElementById('rs-count').textContent = data.total + ' items';
   list.forEach(rs => {
     const tr = document.createElement('tr');
     tr.innerHTML = `<td><span class="badge ${rs.enabled?'badge-on':'badge-off'}">${rs.enabled?'ON':'OFF'}</span></td>
       <td title="${rs.name}">${rs.name}</td>
       <td>${rs.id}</td>
-      <td class="badge-sch">${rs.sch}</td>`;
+      <td>${provBadge(rs.prov)}</td>
+      <td>${schIcon(rs.sch)}</td>`;
     tr.onclick = () => selectRS(rs, tr);
     tb.appendChild(tr);
   });
+  // Pagination
+  const pg = document.getElementById('rs-pagination');
+  pg.innerHTML = '';
+  if (data.pages > 1) {
+    const prev = document.createElement('button');
+    prev.textContent = '◀ Prev';
+    prev.disabled = data.page <= 1;
+    prev.onclick = () => currentSearch ? searchRSPage(data.page - 1) : loadAllRS(data.page - 1);
+    pg.appendChild(prev);
+    const info = document.createElement('span');
+    info.className = 'page-info';
+    info.textContent = `Page ${data.page} / ${data.pages}`;
+    pg.appendChild(info);
+    const next = document.createElement('button');
+    next.textContent = 'Next ▶';
+    next.disabled = data.page >= data.pages;
+    next.onclick = () => currentSearch ? searchRSPage(data.page + 1) : loadAllRS(data.page + 1);
+    pg.appendChild(next);
+  }
+}
+async function searchRSPage(page) {
+  try {
+    const res = await fetch(`/api/rulesets?q=${encodeURIComponent(currentSearch)}&page=${page}&size=50`);
+    const data = await res.json();
+    renderRS(data);
+  } catch(e) { toast('Search failed: ' + e.message, 'error'); }
 }
 async function selectRS(rs, tr) {
   selectedRS = rs;
-  selectedRule = null;  // Reset rule selection when switching RS
+  selectedRule = null;
   document.querySelectorAll('#rs-table tr').forEach(r => r.classList.remove('selected'));
   tr.classList.add('selected');
   try {
@@ -685,17 +760,17 @@ function renderRules(rules, rsName) {
       <td title="${r.src}">${r.src}</td>
       <td title="${r.dst}">${r.dst}</td>
       <td title="${r.svc}">${r.svc}</td>
-      <td class="badge-sch">${r.sch}</td>`;
+      <td>${provBadge(r.prov)}</td>
+      <td>${schIcon(r.sch)}</td>`;
     tr.onclick = () => {
       document.querySelectorAll('#rules-table tr').forEach(x => x.classList.remove('selected'));
       tr.classList.add('selected');
-      selectedRule = { href: r.href, name: r.desc, is_ruleset: r.is_ruleset, detail_rs: rsName, src: r.src, dst: r.dst, svc: r.svc };
+      selectedRule = { href: r.href, name: r.desc, is_ruleset: r.is_ruleset, detail_rs: rsName, src: r.src, dst: r.dst, svc: r.svc, prov: r.prov };
     };
     tb.appendChild(tr);
-    // Auto-select first row (ENTIRE RULESET)
     if (idx === 0) {
       tr.classList.add('selected');
-      selectedRule = { href: r.href, name: r.desc, is_ruleset: r.is_ruleset, detail_rs: rsName, src: r.src, dst: r.dst, svc: r.svc };
+      selectedRule = { href: r.href, name: r.desc, is_ruleset: r.is_ruleset, detail_rs: rsName, src: r.src, dst: r.dst, svc: r.svc, prov: r.prov };
     }
   });
 }
@@ -704,6 +779,11 @@ function renderRules(rules, rsName) {
 function openScheduleModal() {
   if (!selectedRS || !selectedRule) { toast('Please select a RuleSet on the left and a rule on the right first.', 'error'); return; }
   const r = selectedRule;
+  // Block draft-only items
+  if (r.prov === 'draft') {
+    toast('Cannot schedule a draft-only (unprovisioned) rule. Please provision it first.', 'error');
+    return;
+  }
   const typeLabel = r.is_ruleset ? '📦 RuleSet' : '📄 Rule';
   document.getElementById('modal-title').textContent = '📅 New Schedule';
   document.getElementById('modal-target-info').innerHTML = `
