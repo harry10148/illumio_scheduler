@@ -26,8 +26,9 @@ def t(key):
 _STRINGS = {
     'en': {
         # Main Menu
-        'app_title': 'Illumio Scheduler v4.2 (Hybrid UI)',
-        'menu_config': 'Configure API',
+        'app_title': 'Illumio Scheduler',
+        'menu_version': 'v1.0.0',
+        'menu_config': 'Settings',
         'menu_schedule': 'Schedule Management (Browse/List/Edit/Delete)',
         'menu_check': 'Run Check Now',
         'menu_webgui': 'Open Web GUI',
@@ -84,6 +85,10 @@ _STRINGS = {
         'sch_expire_prompt': 'Expire at (YYYY-MM-DD HH:MM) [q=back]:',
         'sch_expire_note': 'Format: YYYY-MM-DD HH:MM (auto-disable & remove)',
         'sch_time_error': 'Invalid time format.',
+        'sch_time_invalid': 'Time error: Format must be HH:MM and End time cannot equal Start time.',
+        'sch_time_format_hint': '(24H e.g. 09:00)',
+        'sch_tag_recurring': 'Schedule',
+        'sch_tag_expire': 'Expiration',
         'sch_saved': 'Schedule saved and provisioned!',
         'sch_updated': 'Schedule updated!',
         'sch_exists_warn': 'Warning: This item already has a schedule. Will overwrite.',
@@ -135,6 +140,19 @@ _STRINGS = {
         'lang_zh': 'Traditional Chinese (繁體中文)',
         'lang_set': 'Language set to:',
         
+        # Extended Config Labels
+        'cfg_api_title': 'API Configuration',
+        'cfg_alert_title': 'Alert Channels & Languages',
+        'cfg_ssl_title': 'SSL Certificate Verification',
+        'cfg_smtp_title': 'SMTP Settings',
+        'cfg_ssl_current': 'Current',
+        'cfg_ssl_ignore': 'Ignore',
+        'cfg_ssl_verify': 'Verify',
+        'cfg_auth_on': 'ON',
+        'cfg_auth_off': 'OFF',
+        'cfg_alerts_label': 'Alerts',
+        'cfg_alert_mail': 'Mail',
+        
         # Web GUI
         'gui_starting': 'Starting Web GUI...',
         'gui_flask_missing': 'Web GUI requires Flask. Install with:',
@@ -151,8 +169,9 @@ _STRINGS = {
     
     'zh': {
         # Main Menu
-        'app_title': 'Illumio Scheduler v4.2 (Hybrid UI)',
-        'menu_config': '設定 API',
+        'app_title': 'Illumio Scheduler',
+        'menu_version': 'v1.0.0',
+        'menu_config': '系統設定',
         'menu_schedule': '排程管理 (瀏覽/列表/修改/刪除)',
         'menu_check': '立即檢查',
         'menu_webgui': '開啟 Web GUI',
@@ -209,6 +228,10 @@ _STRINGS = {
         'sch_expire_prompt': '過期時間 (YYYY-MM-DD HH:MM) [q=返回]:',
         'sch_expire_note': '格式: YYYY-MM-DD HH:MM (時間到自動關閉並刪除)',
         'sch_time_error': '時間格式錯誤。',
+        'sch_time_invalid': '時間錯誤：格式必須為 24 小時制 (HH:MM)，且起始與結束時間不可相同。',
+        'sch_time_format_hint': '(24小時制 例如 09:00)',
+        'sch_tag_recurring': '排程',
+        'sch_tag_expire': '有效期限',
         'sch_saved': '排程已儲存並寫入 Note!',
         'sch_updated': '排程已更新!',
         'sch_exists_warn': '警告: 此規則已存在排程設定。將覆蓋舊設定。',
@@ -259,6 +282,19 @@ _STRINGS = {
         'lang_en': 'English',
         'lang_zh': '繁體中文 (Traditional Chinese)',
         'lang_set': '語系已切換為:',
+        
+        # Extended Config Labels
+        'cfg_api_title': 'API 連線設定',
+        'cfg_alert_title': '警報通道與語系設定',
+        'cfg_ssl_title': 'SSL 憑證驗證',
+        'cfg_smtp_title': 'SMTP 伺服器設定',
+        'cfg_ssl_current': '目前狀態',
+        'cfg_ssl_ignore': '忽略 (Ignore)',
+        'cfg_ssl_verify': '驗證 (Verify)',
+        'cfg_auth_on': '啟用',
+        'cfg_auth_off': '停用',
+        'cfg_alerts_label': '告警通知',
+        'cfg_alert_mail': '郵件',
         
         # Web GUI
         'gui_starting': '啟動 Web GUI...',

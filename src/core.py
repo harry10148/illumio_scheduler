@@ -55,8 +55,8 @@ class Colors:
 def truncate(text, width):
     if not text: return " " * width
     text = str(text).replace("\n", " ") 
-    text = re.sub(r'\[📅 排程:.*?\]', '', text).strip()
-    text = re.sub(r'\[⏳ 有效期限.*?\]', '', text).strip()
+    text = re.sub(r'\[📅 .*?\]', '', text).strip()
+    text = re.sub(r'\[⏳ .*?\]', '', text).strip()
     if not text: return "-"
     if len(text) > width:
         return text[:width-3] + "..."
@@ -83,8 +83,19 @@ class ConfigManager:
                 return False
         return False
 
-    def save(self, url, org, key, secret):
-        data = {"pce_url": url.rstrip("/"), "org_id": org, "api_key": key, "api_secret": secret}
+    def save(self, url, org, key, secret, alert_mail=None, ssl_verify=None, smtp_host=None, smtp_port=None, smtp_auth=None):
+        data = {
+            "pce_url": url.rstrip("/"), 
+            "org_id": org, 
+            "api_key": key, 
+            "api_secret": secret,
+            "lang": self.config.get('lang', 'en'),
+            "alert_mail": alert_mail if alert_mail is not None else self.config.get('alert_mail', ''),
+            "ssl_verify": ssl_verify if ssl_verify is not None else self.config.get('ssl_verify', False),
+            "smtp_host": smtp_host if smtp_host is not None else self.config.get('smtp_host', ''),
+            "smtp_port": smtp_port if smtp_port is not None else self.config.get('smtp_port', ''),
+            "smtp_auth": smtp_auth if smtp_auth is not None else self.config.get('smtp_auth', True)
+        }
         with open(self.config_path, 'w', encoding='utf-8') as f: 
             json.dump(data, f, indent=4)
         self.config = data
@@ -95,6 +106,12 @@ class ConfigManager:
         cred = f"{self.config.get('api_key','')}:{self.config.get('api_secret','')}"
         b64 = base64.b64encode(cred.encode()).decode()
         return f"Basic {b64}"
+
+    def save_lang(self, lang_code):
+        self.config['lang'] = lang_code
+        with open(self.config_path, 'w', encoding='utf-8') as f: 
+            json.dump(self.config, f, indent=4)
+        return True
 
     def is_ready(self):
         if not self.config:
@@ -222,8 +239,26 @@ class PCEClient:
             
             r2 = self._api_get(f"/orgs/{self.cfg.config['org_id']}/sec_policy/draft/ip_lists")
             if r2 and r2.status_code == 200:
-                for i in r2.json(): 
-                    self.label_cache[i['href']] = f"[IPList] {i.get('name')}"
+                for i in r2.json():
+                    val = f"[IPList] {i.get('name')}"
+                    self.label_cache[i['href']] = val
+                    self.label_cache[i['href'].replace('/draft/', '/active/')] = val
+                    
+            r3 = self._api_get(f"/orgs/{self.cfg.config['org_id']}/sec_policy/draft/services")
+            if r3 and r3.status_code == 200:
+                for i in r3.json():
+                    name = i.get('name')
+                    ports = []
+                    for svc in i.get('service_ports', []):
+                        p = svc.get('port')
+                        if p:
+                            proto = "UDP" if svc.get('proto') == 17 else "TCP"
+                            top = f"-{svc['to_port']}" if svc.get('to_port') else ""
+                            ports.append(f"{proto}/{p}{top}")
+                    port_str = f" ({','.join(ports)})" if ports else ""
+                    val = f"{name}{port_str}"
+                    self.label_cache[i['href']] = val
+                    self.label_cache[i['href'].replace('/draft/', '/active/')] = val
         except Exception as e: 
             if not silent: print(f"[Cache Error] {e}")
 
@@ -248,7 +283,7 @@ class PCEClient:
                 top = f"-{s['to_port']}" if s.get('to_port') else ""
                 svcs.append(f"{proto}/{p}{top}")
             elif 'href' in s:
-                svcs.append(f"Service({extract_id(s['href'])})")
+                svcs.append(self.label_cache.get(s['href'], f"Service({extract_id(s['href'])})"))
             else: 
                 svcs.append("RefObj")
         return ", ".join(svcs)
@@ -317,8 +352,8 @@ class PCEClient:
         data = res.json()
         current_desc = data.get('description', '') or ''
         
-        clean_desc = re.sub(r'\s*\[📅 排程:.*?\]', '', current_desc)
-        clean_desc = re.sub(r'\s*\[⏳ 有效期限.*?\]', '', clean_desc)
+        clean_desc = re.sub(r'\s*\[📅[^\]]*\]', '', current_desc)
+        clean_desc = re.sub(r'\s*\[⏳[^\]]*\]', '', clean_desc)
         clean_desc = clean_desc.strip()
         
         new_desc = clean_desc

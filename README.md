@@ -1,6 +1,6 @@
-# Illumio Rule Scheduler (v4.2.0)
+# Illumio Rule Scheduler
 
-![Version](https://img.shields.io/badge/Version-v4.2.0-blue)
+![Version](https://img.shields.io/badge/Version-1.0.0-blue)
 ![Python](https://img.shields.io/badge/Python-3.8%2B-gold?logo=python&logoColor=white)
 ![Dependencies](https://img.shields.io/badge/Dependencies-Zero-brightgreen)
 
@@ -96,14 +96,23 @@ Designed for environments without desktop access. Run the script without argumen
 python illumio_scheduler.py
 ```
 **Interactive Main Menu:**
-- **`0. Configure API`**: Basic setup prompt for PCE credentials.
+
+```text
+=== Illumio Scheduler ===
+0. Settings
+1. Schedule Management (Browse/List/Edit/Delete)
+2. Run Check Now
+3. Open Web GUI
+q. Quit
+```
+
+- **`0. Settings`**: Access system settings, including API configuration, language switching, SSL verification, and SMTP settings.
 - **`1. Schedule Management`**: Opens the unified dashboard.
   - Type `a` to browse and add a new schedule with a paginated wizard.
   - Type `e <ID>` to edit an existing schedule's time window.
   - Type `d <ID>` (or `d 1,2,3`) to delete schedules.
 - **`2. Run Check Now`**: Manually execute a schedule check and print the logs to the console.
 - **`3. Open Web GUI`**: Switches the running instance into Web GUI mode.
-- **`4. Language`**: Toggles the CLI language between English and Traditional Chinese.
 
 ### 3. Daemon Mode (Background Monitoring)
 This mode runs continuously in the background to automatically apply your schedules:
@@ -336,14 +345,23 @@ python illumio_scheduler.py --gui --port 5000
 python illumio_scheduler.py
 ```
 **互動式主選單：**
-- **`0. Configure API (設定 API)`**：輸入 PCE 驗證資訊的基礎設定。
+
+```text
+=== Illumio Scheduler ===
+0. Settings
+1. Schedule Management (Browse/List/Edit/Delete)
+2. Run Check Now
+3. Open Web GUI
+q. Quit
+```
+
+- **`0. Settings`**：進入系統設定，包含 API 連線、語系切換、SSL 憑證驗證與 SMTP 伺服器設定。
 - **`1. Schedule Management (排程管理)`**：開啟整合式控制面板。
   - 輸入 `a` 以分頁導覽模式瀏覽並新增排程。
   - 輸入 `e <ID>` 修改現有排程的時間區間。
   - 輸入 `d <ID>`（或 `d 1,2,3`）刪除排程。
 - **`2. Run Check Now (立即檢查)`**：手動執行一次排程檢查，並將日誌輸出至終端機。
 - **`3. Open Web GUI (開啟 Web GUI)`**：將目前的執行實例切換為 Web GUI 模式。
-- **`4. Language [ZH] (語系切換)`**：在英文與繁體中文之間切換 CLI 的語言顯示。
 
 ### 3. Daemon 模式（背景監控）
 此模式會在背景持續運行，確保您的排程時間一到就會自動生效：

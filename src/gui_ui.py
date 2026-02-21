@@ -8,6 +8,7 @@ import threading
 import webbrowser
 from datetime import datetime
 from src.core import truncate, extract_id
+import src.i18n as i18n
 
 # ==========================================
 # Flask App Factory
@@ -141,8 +142,12 @@ def create_app(core_system):
         try:
             if d.get('schedule_type') == 'recurring':
                 days = [x.strip() for x in d.get('days', '').split(',')]
-                datetime.strptime(d.get('start', ''), '%H:%M')
-                datetime.strptime(d.get('end', ''), '%H:%M')
+                from datetime import datetime
+                t1 = datetime.strptime(d.get('start', ''), '%H:%M')
+                t2 = datetime.strptime(d.get('end', ''), '%H:%M')
+                if t1 >= t2:
+                    raise ValueError(i18n.t('sch_time_invalid'))
+                
                 db_entry.update({
                     'type': 'recurring',
                     'action': d.get('action', 'allow'),
@@ -150,18 +155,30 @@ def create_app(core_system):
                     'start': d.get('start'),
                     'end': d.get('end'),
                 })
-                note_msg = f"[📅 排程: {d.get('action','allow')} {d.get('start')}-{d.get('end')}]"
+                act_str = i18n.t('action_enable_in_window') if d.get('action') == 'allow' else i18n.t('action_disable_in_window')
+                days_str = i18n.t('action_everyday') if len(days) == 7 else ','.join([dx[:3] for dx in days])
+                note_msg = f"[📅 {i18n.t('sch_tag_recurring')}: {days_str} {db_entry['start']}-{db_entry['end']} {act_str}]"
             else:
+                from datetime import datetime
                 ex = d.get('expire_at', '').replace(' ', 'T')
-                datetime.fromisoformat(ex)
+                if len(ex) == 16: ex += ":00Z"
+                datetime.fromisoformat(ex.replace("Z", "+00:00"))
                 db_entry.update({'type': 'one_time', 'action': 'allow', 'expire_at': ex})
-                note_msg = f"[⏳ 有效期限至 {ex} 止]"
+                note_msg = f"[⏳ {i18n.t('sch_tag_expire')}: {d.get('expire_at')}]"
         except ValueError as e:
-            return jsonify({'error': f'Invalid format: {e}'}), 400
+            return jsonify({'error': str(e)}), 400
 
         db.put(href, db_entry)
         pce.update_rule_note(href, note_msg)
-        return jsonify({'ok': True, 'message': 'Schedule saved and provisioned.'})
+        return jsonify({'ok': True, 'message': i18n.t('sch_updated')})
+
+    @app.route('/api/schedules/<path:href>', methods=['GET'])
+    def api_schedule_get(href):
+        href = f"/{href}"
+        data = db.get(href)
+        if not data:
+            return jsonify({'error': 'Not found'}), 404
+        return jsonify(data)
 
     @app.route('/api/schedules/delete', methods=['POST'])
     def api_schedule_delete():
@@ -195,14 +212,25 @@ def create_app(core_system):
             'org_id': cfg.config.get('org_id', ''),
             'api_key': cfg.config.get('api_key', ''),
             'api_secret': '••••••••' if cfg.config.get('api_secret') else '',
+            'lang': i18n.get_lang(),
         })
 
     @app.route('/api/config', methods=['POST'])
     def api_config_save():
         d = request.get_json()
-        if not all([d.get('pce_url'), d.get('org_id'), d.get('api_key'), d.get('api_secret')]):
-            return jsonify({'error': 'All fields required'}), 400
-        cfg.save(d['pce_url'], d['org_id'], d['api_key'], d['api_secret'])
+        if not all([d.get('pce_url'), d.get('org_id'), d.get('api_key')]):
+            return jsonify({'error': 'URL, Org ID and API Key are required'}), 400
+        
+        api_sec = d.get('api_secret')
+        if not api_sec:
+            api_sec = cfg.config.get('api_secret')
+            if not api_sec:
+                return jsonify({'error': 'API Secret is required for first-time setup'}), 400
+                
+        cfg.save(d['pce_url'], d['org_id'], d['api_key'], api_sec)
+        if 'lang' in d:
+            i18n.set_lang(d['lang'])
+            cfg.save_lang(d['lang'])
         pce.update_label_cache(silent=True)
         return jsonify({'ok': True, 'message': 'Configuration saved!'})
 
@@ -398,7 +426,11 @@ tr.selected { background: #1c3a5e !important; }
 .badge-sch { color: var(--gold); font-size: 14px; }
 
 /* ── Split Pane ── */
-.split-pane { display: grid; grid-template-columns: 340px 1fr; gap: 16px; }
+.split-pane { display: flex; flex-direction: row; height: calc(100vh - 120px); }
+.left-pane { width: 340px; min-width: 200px; max-width: 600px; display: flex; flex-direction: column; }
+.resizer { width: 8px; cursor: col-resize; background: transparent; transition: background 0.2s; margin-right: 8px; }
+.resizer:hover, .resizer.resizing { background: var(--accent); opacity: 0.5; }
+.right-pane { flex: 1; min-width: 300px; display: flex; flex-direction: column; overflow: hidden; }
 .pane-header {
   display: flex;
   justify-content: space-between;
@@ -522,7 +554,7 @@ tr.selected { background: #1c3a5e !important; }
 <!-- Header -->
 <div class="header">
   <h1>🕒 Illumio Rule Scheduler</h1>
-  <span class="version">v4.2 · Web GUI</span>
+  <span class="version">Web GUI</span>
   <button class="stop-btn" onclick="stopServer()">⏹ Stop WebGUI</button>
 </div>
 
@@ -535,37 +567,41 @@ tr.selected { background: #1c3a5e !important; }
 </div>
 
 <div style="padding:6px 20px;font-size:12px;color:var(--fg-dim);background:var(--bg-panel);border-bottom:1px solid var(--border)">
-  Hint: <span style="color:#f0a500">★</span> = RuleSet scheduled &nbsp;&nbsp; <span style="color:#58a6ff">●</span> = Child rule only
+  Hint: <span style="color:var(--gold)">★</span> = RuleSet scheduled &nbsp;&nbsp; <span style="color:var(--accent)">●</span> = Child rule only
 </div>
 
 <div class="content">
 
-<!-- ━━━ Browse Tab ━━━ -->
+<!-- Tab: Browse & Add -->
 <div id="tab-browse" class="tab-panel active">
-  <div class="toolbar">
-    <input type="text" id="search-input" placeholder="Search RuleSets..." onkeydown="if(event.key==='Enter')searchRS()">
-    <button class="btn" onclick="searchRS()">🔍 Search</button>
-    <button class="btn" onclick="loadAllRS()">↻ Refresh All</button>
-  </div>
+  
   <div class="split-pane">
-    <!-- Left: RuleSets -->
-    <div>
-      <div class="pane-header"><h3>RuleSets</h3><span id="rs-count" style="color:var(--fg-dim);font-size:12px"></span></div>
-      <div class="table-wrap">
-        <table><thead><tr><th style="width:50px">⚡</th><th>Name</th><th style="width:60px">ID</th><th style="width:55px">PROV</th><th style="width:30px">📅</th></tr></thead>
-        <tbody id="rs-table"></tbody></table>
+    <div class="left-pane" id="left-pane">
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <input type="text" id="rs-search-input" placeholder="Search RuleSets..." onkeypress="if(event.key==='Enter') searchRS()" style="flex:1" />
+        <button class="btn" style="padding:0 12px;display:flex;align-items:center;gap:6px" onclick="searchRS()">🔍 Search</button>
+        <button class="btn" style="padding:0 12px" onclick="clearRS()">↺ Refresh All</button>
       </div>
-      <div class="pagination" id="rs-pagination"></div>
+      
+      <div class="pane-header"><span>RuleSets</span><span id="rs-count" style="color:var(--fg-dim)">0 items</span></div>
+      <div class="table-wrap" style="flex:1">
+        <table>
+          <thead><tr><th style="width:10%">⚡</th><th style="width:50%">NAME</th><th style="width:15%">ID</th><th style="width:15%">PROV</th><th style="width:10%">📅</th></tr></thead>
+          <tbody id="rs-table"></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="rs-pagination" style="margin-top:12px"></div>
     </div>
-    <!-- Right: Rules -->
-    <div>
-      <div class="pane-header">
-        <h3 id="rules-title">← Select a RuleSet</h3>
-        <button class="btn btn-accent" onclick="openScheduleModal()">＋ Schedule Selected</button>
-      </div>
-      <div class="table-wrap">
-        <table><thead><tr><th style="width:50px">⚡</th><th style="width:60px">ID</th><th>Description</th><th>Source</th><th>Dest</th><th>Service</th><th style="width:55px">PROV</th><th style="width:30px">📅</th></tr></thead>
-        <tbody id="rules-table"></tbody></table>
+    
+    <div class="resizer" id="resizer"></div>
+    
+    <div class="right-pane">
+      <div class="pane-header"><span id="rules-title">Select a RuleSet...</span><button class="btn btn-accent" onclick="openScheduleModal()">+ Schedule Selected</button></div>
+      <div class="table-wrap" style="flex:1">
+        <table>
+          <thead><tr><th>⚡</th><th>ID</th><th>DESC</th><th>SRC</th><th>DEST</th><th>SERVICE</th><th>PROV</th><th>📅</th></tr></thead>
+          <tbody id="rules-table"><tr><td colspan="8" style="text-align:center;color:var(--fg-dim)">Empty</td></tr></tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -595,11 +631,18 @@ tr.selected { background: #1c3a5e !important; }
 <!-- ━━━ Settings Tab ━━━ -->
 <div id="tab-settings" class="tab-panel">
   <div class="form-card">
-    <h3>⚙ PCE API Configuration</h3>
+    <h3>⚙ PCE API Configuration <span style="font-size:12px;color:var(--fg-dim);float:right">v1.0.0</span></h3>
     <div class="form-row"><label>PCE URL</label><input id="cfg-url" type="text" placeholder="https://pce.example.com:8443"></div>
     <div class="form-row"><label>Org ID</label><input id="cfg-org" type="text" placeholder="1"></div>
     <div class="form-row"><label>API Key</label><input id="cfg-key" type="text" placeholder="api_..."></div>
     <div class="form-row"><label>API Secret</label><input id="cfg-sec" type="password" placeholder="••••••••"></div>
+    <div class="form-row">
+      <label>Language</label>
+      <select id="cfg-lang" style="background:var(--bg-input);border:1px solid var(--border);color:var(--fg);padding:8px 12px;border-radius:var(--radius);font-size:13px">
+        <option value="en">English (en)</option>
+        <option value="zh">繁體中文 (zh-TW)</option>
+      </select>
+    </div>
     <div style="margin-top:16px"><button class="btn btn-accent" onclick="saveConfig()">💾 Save Configuration</button></div>
   </div>
 </div>
@@ -847,10 +890,49 @@ async function loadSchedules() {
       tr.innerHTML = `<td><input type="checkbox" class="sch-check" data-href="${s.href}"></td>
         <td>${s.type}</td><td title="${s.rs_name}">${s.rs_name}</td><td title="${s.name}">${s.name}</td>
         <td><span class="badge ${s.action==='ALLOW'?'badge-on':(s.action==='BLOCK'?'badge-off':'')}">${s.action}</span></td>
-        <td>${s.timing}</td><td>${s.id}</td>`;
+        <td>${s.timing}</td><td>${s.id}</td>
+        <td><button class="btn" style="padding:2px 6px;font-size:11px" onclick="editSchedule('${s.href}')">✎ Edit</button></td>`;
       tb.appendChild(tr);
     });
   } catch(e) { toast('Failed: ' + e.message, 'error'); }
+}
+
+async function editSchedule(href) {
+  try {
+    const res = await fetch('/api/schedules' + href);
+    if (!res.ok) { toast('Error loading schedule.', 'error'); return; }
+    const r = await res.json();
+    
+    selectedRule = {
+      href: href, name: r.detail_name || r.name, is_ruleset: r.is_ruleset,
+      detail_rs: r.detail_rs, src: r.detail_src, dst: r.detail_dst, svc: r.detail_svc, prov: 'active'
+    };
+
+    const typeLabel = r.is_ruleset ? '📦 RuleSet' : '📄 Rule';
+    document.getElementById('modal-title').textContent = '✎ Edit Schedule';
+    document.getElementById('modal-target-info').innerHTML = `
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:14px;font-size:13px">
+        <div style="margin-bottom:6px"><span style="color:var(--fg-dim)">Type:</span> <strong style="color:var(--accent)">${typeLabel}</strong></div>
+        <div style="margin-bottom:4px"><span style="color:var(--fg-dim)">RuleSet:</span> ${r.detail_rs || '-'}</div>
+        <div style="margin-bottom:4px"><span style="color:var(--fg-dim)">Target:</span> <strong>${selectedRule.name}</strong></div>
+        <div style="display:flex;gap:16px;margin-top:4px;color:var(--fg-dim);font-size:12px">
+          <span>Src: ${r.detail_src || 'All'}</span><span>Dst: ${r.detail_dst || 'All'}</span><span>Svc: ${r.detail_svc || 'All'}</span>
+        </div>
+      </div>`;
+    
+    if (r.type === 'recurring') {
+      document.querySelector('input[name="sch-type"][value="recurring"]').checked = true;
+      document.getElementById('sch-action').value = r.action;
+      document.getElementById('sch-days').value = (r.days || []).join(',');
+      document.getElementById('sch-start').value = r.start || '08:00';
+      document.getElementById('sch-end').value = r.end || '18:00';
+    } else {
+      document.querySelector('input[name="sch-type"][value="one_time"]').checked = true;
+      document.getElementById('sch-expire').value = (r.expire_at || '').replace('T', ' ').substring(0, 16);
+    }
+    toggleSchType();
+    document.getElementById('schedule-modal').style.display = 'flex';
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
 }
 function toggleSchSelectAll(master) {
   document.querySelectorAll('.sch-check').forEach(cb => cb.checked = master.checked);
@@ -892,6 +974,7 @@ async function loadConfig() {
     document.getElementById('cfg-key').value = data.api_key || '';
     document.getElementById('cfg-sec').value = '';
     document.getElementById('cfg-sec').placeholder = data.api_secret || '••••••••';
+    if (data.lang) document.getElementById('cfg-lang').value = data.lang;
   } catch(e) { toast('Failed to load config', 'error'); }
 }
 async function saveConfig() {
@@ -900,9 +983,10 @@ async function saveConfig() {
     org_id: document.getElementById('cfg-org').value,
     api_key: document.getElementById('cfg-key').value,
     api_secret: document.getElementById('cfg-sec').value,
+    lang: document.getElementById('cfg-lang').value
   };
-  if (!payload.pce_url || !payload.org_id || !payload.api_key || !payload.api_secret) {
-    toast('All fields are required.', 'error'); return;
+  if (!payload.pce_url || !payload.org_id || !payload.api_key) {
+    toast('URL, Org ID and API Key are required.', 'error'); return;
   }
   try {
     const res = await fetch('/api/config', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
@@ -918,6 +1002,31 @@ async function stopServer() {
   try { await fetch('/api/stop', {method:'POST'}); } catch(e) {}
   document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;flex-direction:column;gap:12px"><h2 style="color:var(--accent)">Server Stopped</h2><p style="color:var(--fg-dim)">You can close this tab.</p></div>';
 }
+
+// ━━━ Resizer Logic ━━━
+let isResizing = false;
+const resizer = document.getElementById('resizer');
+const leftPane = document.getElementById('left-pane');
+resizer.addEventListener('mousedown', (e) => {
+  isResizing = true;
+  resizer.classList.add('resizing');
+  document.body.style.cursor = 'col-resize';
+  e.preventDefault();
+});
+document.addEventListener('mousemove', (e) => {
+  if (!isResizing) return;
+  const newWidth = e.clientX - leftPane.getBoundingClientRect().left;
+  if (newWidth > 200 && newWidth < Math.max(600, window.innerWidth * 0.5)) {
+    leftPane.style.width = newWidth + 'px';
+  }
+});
+document.addEventListener('mouseup', () => {
+  if (isResizing) {
+    isResizing = false;
+    resizer.classList.remove('resizing');
+    document.body.style.cursor = '';
+  }
+});
 
 // ━━━ Init ━━━
 document.addEventListener('DOMContentLoaded', () => { loadAllRS(); });

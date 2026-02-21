@@ -81,40 +81,106 @@ class CLI:
         return True
 
     def setup_config_ui(self):
-        print(f"\n{Colors.HEADER}--- {t('config_title')} ---{Colors.RESET}")
-        curr_url = self.cfg.config.get('pce_url','')
-        u_in = clean_input(input(f"PCE URL ({t('sch_current')}: {curr_url}): "))
-        if u_in.lower() in ['q', 'b']: return
-        url = u_in or curr_url
+        while True:
+            c = self.cfg.config
+            url = c.get('pce_url', 'Not Set')
+            key = c.get('api_key', '')
+            masked_key = f"{key[:5]}..." if key else "Not Set"
+            
+            alert_mail = c.get('alert_mail', '')
+            alert_str = f"{t('cfg_alert_mail')} ({alert_mail})" if alert_mail else "None"
+            
+            ssl_v = c.get('ssl_verify', False)
+            ssl_str = t('cfg_ssl_verify') if ssl_v else t('cfg_ssl_ignore')
+            
+            smtp_h = c.get('smtp_host', '')
+            smtp_p = c.get('smtp_port', '')
+            smtp_a = t('cfg_auth_on') if c.get('smtp_auth', True) else t('cfg_auth_off')
+            smtp_str = f"{smtp_h}:{smtp_p} | Auth:{smtp_a}" if smtp_h else "Not Configured"
 
-        curr_org = self.cfg.config.get('org_id','')
-        o_in = clean_input(input(f"Org ID  ({t('sch_current')}: {curr_org}): "))
-        if o_in.lower() in ['q', 'b']: return
-        org = o_in or curr_org
+            print(f"\n{Colors.HEADER}=== System Settings ==={Colors.RESET} {t('menu_version')}")
+            print(f"API URL : {url}")
+            print(f"API Key : {masked_key}")
+            print(f"{t('cfg_alerts_label')}  : {alert_str}")
+            print("-" * 40)
+            print(f"1. {t('cfg_api_title')} (URL, Key, Secret)")
+            print(f"2. {t('cfg_alert_title')}")
+            print(f"3. {t('cfg_ssl_title')} ({t('cfg_ssl_current')}: {ssl_str})")
+            print(f"4. {t('cfg_smtp_title')} ({smtp_str})")
+            print(f"0. {t('back')}")
+            
+            ans = clean_input(input(f"\n{t('select_prompt')}: "))
+            if ans == '0' or ans.lower() in ['q', 'b']: break
 
-        curr_key = self.cfg.config.get('api_key','')
-        k_in = clean_input(input(f"API Key ({t('sch_current')}: {curr_key}): "))
-        if k_in.lower() in ['q', 'b']: return
-        key = k_in or curr_key
+            if ans == '1':
+                print(f"\n{Colors.CYAN}[*] {t('cfg_api_title')}{Colors.RESET}")
+                u_in = clean_input(input(f"PCE URL ({t('sch_current')}: {url}): "))
+                p_url = u_in or url
 
-        sec_p = "API Secret (unchanged)" if self.cfg.config.get('api_secret') else "API Secret"
-        sec = getpass.getpass(f"{sec_p}: ")
-        secret = sec if sec else self.cfg.config.get('api_secret')
-        
-        if url and org and key and secret: 
-            if self.cfg.save(url, org, key, secret):
+                curr_org = c.get('org_id','')
+                o_in = clean_input(input(f"Org ID  ({t('sch_current')}: {curr_org}): "))
+                p_org = o_in or curr_org
+
+                curr_key = c.get('api_key','')
+                k_in = clean_input(input(f"API Key ({t('sch_current')}: {curr_key}): "))
+                p_key = k_in or curr_key
+
+                sec_p = "API Secret (unchanged)" if c.get('api_secret') else "API Secret"
+                sec = getpass.getpass(f"{sec_p}: ")
+                p_secret = sec if sec else c.get('api_secret')
+                
+                if p_url and p_org and p_key and p_secret: 
+                    self.cfg.save(p_url, p_org, p_key, p_secret)
+                    print(f"{Colors.GREEN}[+] {t('config_saved')}{Colors.RESET}")
+            
+            elif ans == '2':
+                # Alerts & Language
+                print(f"\n{Colors.CYAN}[*] {t('cfg_alert_title')}{Colors.RESET}")
+                m_in = clean_input(input(f"Alert Email ({t('sch_current')}: {alert_mail}): "))
+                new_mail = m_in if m_in else alert_mail
+                
+                print(f"\n1. {t('lang_en')}")
+                print(f"2. {t('lang_zh')}")
+                l_ans = clean_input(input(f"{t('lang_prompt')} ({t('sch_current')}: {get_lang().upper()}): "))
+                if l_ans == '1': set_lang('en'); self.cfg.save_lang('en')
+                elif l_ans == '2': set_lang('zh'); self.cfg.save_lang('zh')
+                
+                self.cfg.save(c['pce_url'], c['org_id'], c['api_key'], c['api_secret'], alert_mail=new_mail)
                 print(f"{Colors.GREEN}[+] {t('config_saved')}{Colors.RESET}")
 
-    # ==========================================
-    # Language Selector
-    # ==========================================
+            elif ans == '3':
+                # SSL Toggle
+                new_ssl = not ssl_v
+                self.cfg.save(c['pce_url'], c['org_id'], c['api_key'], c['api_secret'], ssl_verify=new_ssl)
+                print(f"{Colors.GREEN}[+] {t('cfg_ssl_title')} -> {t('cfg_ssl_verify') if new_ssl else t('cfg_ssl_ignore')}{Colors.RESET}")
+
+            elif ans == '4':
+                # SMTP Settings
+                print(f"\n{Colors.CYAN}[*] {t('cfg_smtp_title')}{Colors.RESET}")
+                h_in = clean_input(input(f"SMTP Host ({t('sch_current')}: {smtp_h}): "))
+                new_host = h_in or smtp_h
+                
+                p_in = clean_input(input(f"SMTP Port ({t('sch_current')}: {smtp_p}): "))
+                new_port = p_in or smtp_p
+                
+                a_in = clean_input(input(f"SMTP Auth (y/n) ({t('sch_current')}: {smtp_a}): "))
+                new_auth = True if a_in.lower() == 'y' else (False if a_in.lower() == 'n' else c.get('smtp_auth', True))
+                
+                self.cfg.save(c['pce_url'], c['org_id'], c['api_key'], c['api_secret'], smtp_host=new_host, smtp_port=new_port, smtp_auth=new_auth)
+                print(f"{Colors.GREEN}[+] {t('config_saved')}{Colors.RESET}")
+
     def select_language(self):
+        # This is now integrated into option 2 of setup_config_ui, but keep it for direct access if needed
         print(f"\n{Colors.HEADER}--- {t('lang_prompt')} ---{Colors.RESET}")
         print(f"  1. {t('lang_en')}")
         print(f"  2. {t('lang_zh')}")
         ans = clean_input(input(">> "))
-        if ans == '1': set_lang('en')
-        elif ans == '2': set_lang('zh')
+        if ans == '1': 
+            set_lang('en')
+            self.cfg.save_lang('en')
+        elif ans == '2': 
+            set_lang('zh')
+            self.cfg.save_lang('zh')
         else: return
         print(f"{Colors.GREEN}[+] {t('lang_set')} {t('lang_en') if get_lang() == 'en' else t('lang_zh')}{Colors.RESET}")
 
@@ -261,24 +327,26 @@ class CLI:
             
             prompt_s = t('sch_start_prompt')
             if default_start: prompt_s += f" ({t('sch_current')}: {default_start})"
-            prompt_s += " "
+            prompt_s += f" {t('sch_time_format_hint')} "
             s_time = clean_input(input(prompt_s))
             if s_time.lower() in ['q', 'b']: return None, None
             if not s_time and default_start: s_time = default_start
             
             prompt_e = t('sch_end_prompt')
             if default_end: prompt_e += f" ({t('sch_current')}: {default_end})"
-            prompt_e += " "
+            prompt_e += f" {t('sch_time_format_hint')} "
             e_time = clean_input(input(prompt_e))
             if e_time.lower() in ['q', 'b']: return None, None
             if not e_time and default_end: e_time = default_end
 
             import datetime
             try:
-                datetime.datetime.strptime(s_time, "%H:%M")
-                datetime.datetime.strptime(e_time, "%H:%M")
+                t1 = datetime.datetime.strptime(s_time, "%H:%M")
+                t2 = datetime.datetime.strptime(e_time, "%H:%M")
+                if t1 >= t2:
+                    raise ValueError
             except ValueError:
-                print(f"{Colors.RED}[-] {t('sch_time_error')}{Colors.RESET}")
+                print(f"{Colors.RED}[-] {t('sch_time_invalid')}{Colors.RESET}")
                 return None, None
 
             act_str = t('action_enable_in_window') if act == 'allow' else t('action_disable_in_window')
@@ -288,7 +356,7 @@ class CLI:
                 "detail_rs": meta_rs, "detail_src": meta_src, "detail_dst": meta_dst, "detail_svc": meta_svc,
                 "detail_name": target_name
             }
-            note_msg = f"[📅 排程: {days_str} {s_time}-{e_time} {act_str}]"
+            note_msg = f"[📅 {t('sch_tag_recurring')}: {days_str} {s_time}-{e_time} {act_str}]"
             return db_entry, note_msg
 
         elif mode_sel == '2':
@@ -317,7 +385,7 @@ class CLI:
                 "detail_rs": meta_rs, "detail_src": meta_src, "detail_dst": meta_dst, "detail_svc": meta_svc,
                 "detail_name": target_name
             }
-            note_msg = f"[⏳ 有效期限至: {raw_ex} 止]"
+            note_msg = f"[⏳ {t('sch_tag_expire')}: {raw_ex}]"
             return db_entry, note_msg
         
         return None, None
@@ -418,9 +486,9 @@ class CLI:
             if conf.get('is_ruleset'): groups[rs_name]['rs_config'] = entry_data
             else: groups[rs_name]['rules'].append(entry_data)
                 
-        print("\n" + "="*120)
-        print(f"{t('hdr_sch'):<3} | {t('hdr_id'):<6} | {t('list_type'):<4} | {t('list_hierarchy'):<55} | {t('list_mode'):<10} | {t('list_timing')}")
-        print("-" * 120)
+        print("\n" + "="*145)
+        print(f"{t('hdr_sch'):<3} | {t('hdr_id'):<6} | {'Type':<6} | {t('hdr_note'):<25} | {t('hdr_source'):<12} | {t('hdr_dest'):<12} | {t('hdr_service'):<16} | {t('list_mode'):<10} | {t('list_timing')}")
+        print("-" * 145)
 
         for rs_name in sorted(groups.keys()):
             group = groups[rs_name]
@@ -434,14 +502,14 @@ class CLI:
                 live_res = self.pce.get_live_item(h)
                 if live_res and live_res.status_code == 200:
                     live_name = live_res.json().get('name', c['name'])
-                    raw_name = truncate(f"[RS] {live_name}", 55)
-                    display_name = f"{Colors.BOLD}{raw_name:<55}{Colors.RESET}"
+                    raw_name = truncate(f"[RS] {live_name}", 25)
+                    display_name = f"{Colors.BOLD}{raw_name:<25}{Colors.RESET}"
                 elif live_res is None:
-                    raw_name = truncate(f"[RS] {c.get('name', rs_name)} (Failed)", 55)
-                    display_name = f"{Colors.YELLOW}{raw_name:<55}{Colors.RESET}"
+                    raw_name = truncate(f"[RS] {c.get('name', rs_name)} (Failed)", 25)
+                    display_name = f"{Colors.YELLOW}{raw_name:<25}{Colors.RESET}"
                 else:
-                    raw_name = truncate(f"[RS] {t('list_deleted')}", 55)
-                    display_name = f"{Colors.RED}{raw_name:<55}{Colors.RESET}"
+                    raw_name = truncate(f"[RS] {t('list_deleted')}", 25)
+                    display_name = f"{Colors.RED}{raw_name:<25}{Colors.RESET}"
 
                 if c['type'] == 'recurring':
                     mode_raw = t('sch_action_enable') if act == 'allow' else t('sch_action_disable')
@@ -453,11 +521,11 @@ class CLI:
                     mode = f"{Colors.RED}EXPIRE    {Colors.RESET}"
                     time_str = f"Until {c['expire_at'].replace('T', ' ')}"
 
-                print(f" {mark}  | {rid} | {'RS':<4} | {display_name} | {mode} | {time_str}")
+                print(f" {mark}  | {rid} | {'RS':<6} | {display_name} | {'-':<12} | {'-':<12} | {'-':<16} | {mode} | {time_str}")
             else:
                 if group['rules']:
-                    name = truncate(f"[RS] {rs_name}", 55)
-                    print(f" {' ':1}  | {' ':6} | {'    '} | {Colors.BOLD}{Colors.GREY}{name:<55}{Colors.RESET} | {' ':10} | {' '}")
+                    name = truncate(f"[RS] {rs_name}", 25)
+                    print(f" {' ':1}  | {' ':6} | {'      '} | {Colors.BOLD}{Colors.GREY}{name:<25}{Colors.RESET} | {' ':12} | {' ':12} | {' ':16} | {' ':10} | {' '}")
 
             for h, c, act in group['rules']:
                 rid = Colors.id(f"{extract_id(h):<6}")
@@ -467,27 +535,34 @@ class CLI:
                 if live_res and live_res.status_code == 200:
                     r_obj = live_res.json()
                     dest_field = r_obj.get('destinations', r_obj.get('consumers', []))
-                    src = self.pce.resolve_actor_str(dest_field)
-                    dst = self.pce.resolve_actor_str(r_obj.get('providers', []))
-                    svc = self.pce.resolve_service_str(r_obj.get('ingress_services', []))
+                    src = truncate(self.pce.resolve_actor_str(dest_field), 12)
+                    dst = truncate(self.pce.resolve_actor_str(r_obj.get('providers', [])), 12)
+                    svc = truncate(self.pce.resolve_service_str(r_obj.get('ingress_services', [])), 16)
+                    
+                    rule_action = r_obj.get('action', 'allow')
+                    if 'deny' in rule_action.lower():
+                        type_str = f"{Colors.RED}{'Deny':<6}{Colors.RESET}"
+                    else:
+                        type_str = f"{Colors.GREEN}{'Allow':<6}{Colors.RESET}"
                     
                     desc = r_obj.get('description', '').strip()
-                    if desc and desc != '-':
-                        desc = desc.split('\n')[0]
-                        rule_info = f"{desc[:15]} | {src}->{dst}"
+                    if not desc or desc == '-':
+                        desc = "(No description)"
                     else:
-                        rule_info = f"{src}->{dst}"
-                        if svc != "All Services":
-                            rule_info += f" ({svc})"
+                        desc = desc.split('\n')[0]
                         
-                    raw_name = truncate(f"  └─ [Rule] {rule_info}", 55)
-                    display_name = f"{Colors.GREY}{raw_name:<55}{Colors.RESET}"
+                    raw_name = truncate(f" └─ {desc}", 25)
+                    display_name = f"{Colors.GREY}{raw_name:<25}{Colors.RESET}"
                 elif live_res is None:
-                    raw_name = truncate(f"  └─ [Rule] {c.get('name', 'Rule')} (Failed)", 55)
-                    display_name = f"{Colors.YELLOW}{raw_name:<55}{Colors.RESET}"
+                    type_str = f"{Colors.YELLOW}{'Wait':<6}{Colors.RESET}"
+                    src = dst = svc = "-"
+                    raw_name = truncate(f" └─ (Failed connection)", 25)
+                    display_name = f"{Colors.YELLOW}{raw_name:<25}{Colors.RESET}"
                 else:
-                    raw_name = truncate(f"  └─ [Rule] {t('list_rule_deleted')}", 55)
-                    display_name = f"{Colors.RED}{raw_name:<55}{Colors.RESET}"
+                    type_str = f"{Colors.RED}{'-':<6}{Colors.RESET}"
+                    src = dst = svc = "-"
+                    raw_name = truncate(f" └─ {t('list_rule_deleted')}", 25)
+                    display_name = f"{Colors.RED}{raw_name:<25}{Colors.RESET}"
 
                 if c['type'] == 'recurring':
                     mode_raw = t('sch_action_enable') if act == 'allow' else t('sch_action_disable')
@@ -499,9 +574,9 @@ class CLI:
                     mode = f"{Colors.RED}EXPIRE    {Colors.RESET}"
                     time_str = f"Until {c['expire_at'].replace('T', ' ')}"
                 
-                print(f" {mark}  | {rid} | {'Rule':<4} | {display_name} | {mode} | {time_str}")
+                print(f" {mark}  | {rid} | {type_str} | {display_name} | {src:<12} | {dst:<12} | {svc:<16} | {mode} | {time_str}")
                 
-        print("="*120)
+        print("="*145)
 
     # ── Edit by ID ──
     def _edit_by_id(self, edit_id):
@@ -558,8 +633,6 @@ class CLI:
             except Exception: pass
             self.db.delete(href)
             print(f"  {Colors.GREEN}[OK] ID {k} {t('delete_done')}{Colors.RESET}")
-        else:
-            print(f"{Colors.RED}[-] {t('delete_not_found')}{Colors.RESET}")
 
     # ==========================================
     # Main Menu
@@ -576,7 +649,6 @@ class CLI:
             print(f"1. {t('menu_schedule')}")
             print(f"2. {t('menu_check')}")
             print(f"3. {Colors.CYAN}{t('menu_webgui')}{Colors.RESET}")
-            print(f"4. {t('menu_lang')} [{get_lang().upper()}]")
             print(f"q. {t('menu_quit')}")
             ans = clean_input(input(">> "))
             
@@ -595,7 +667,6 @@ class CLI:
                             print(f"      pip install flask")
                     else:
                         print(f"{Colors.RED}[-] {t('gui_no_core')}{Colors.RESET}")
-                elif ans == '4': self.select_language()
                 elif ans.lower() in ['q', 'exit']: break
             except Exception as e:
                 import traceback

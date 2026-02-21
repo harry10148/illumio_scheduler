@@ -13,6 +13,11 @@ from src.core import ConfigManager, ScheduleDB, PCEClient, ScheduleEngine
 
 def init_core():
     cfg = ConfigManager(CONFIG_FILE)
+    cfg.load()
+    
+    import src.i18n as i18n
+    i18n.set_lang(cfg.config.get('lang', 'en'))
+
     db = ScheduleDB(DB_FILE)
     pce = PCEClient(cfg)
     engine = ScheduleEngine(db, pce)
