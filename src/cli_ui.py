@@ -461,14 +461,26 @@ class CLI:
                 
                 live_res = self.pce.get_live_item(h)
                 if live_res and live_res.status_code == 200:
-                    live_desc = live_res.json().get('description') or f"Rule {extract_id(h)}"
-                    raw_name = truncate(f"[RS] {rs_name[:15]} └─ {live_desc}", 55)
+                    r_obj = live_res.json()
+                    dest_field = r_obj.get('destinations', r_obj.get('consumers', []))
+                    src = self.pce.resolve_actor_str(dest_field)
+                    dst = self.pce.resolve_actor_str(r_obj.get('providers', []))
+                    svc = self.pce.resolve_service_str(r_obj.get('ingress_services', []))
+                    
+                    desc = r_obj.get('description', '').strip()
+                    if desc and desc != '-':
+                        desc = desc.split('\n')[0]
+                        rule_info = f"{desc} | {src}->{dst}"
+                    else:
+                        rule_info = f"{src} -> {dst} ({svc})"
+                        
+                    raw_name = truncate(f"└ [Rule] {rs_name[:12]}... | {rule_info}", 55)
                     display_name = f"{Colors.GREY}{raw_name:<55}{Colors.RESET}"
                 elif live_res is None:
-                    raw_name = truncate(f"[RS] {rs_name[:15]} └─ {c.get('name', 'Rule')} (Failed)", 55)
+                    raw_name = truncate(f"└ [Rule] {rs_name[:15]} | (Failed)", 55)
                     display_name = f"{Colors.YELLOW}{raw_name:<55}{Colors.RESET}"
                 else:
-                    raw_name = truncate(f"[RS] {rs_name[:15]} └─ {t('list_rule_deleted')}", 55)
+                    raw_name = truncate(f"└ [Rule] {rs_name[:15]} | {t('list_rule_deleted')}", 55)
                     display_name = f"{Colors.RED}{raw_name:<55}{Colors.RESET}"
 
                 if c['type'] == 'recurring':
