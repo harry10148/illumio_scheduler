@@ -18,15 +18,25 @@ def init_core():
     engine = ScheduleEngine(db, pce)
     return {'cfg': cfg, 'db': db, 'pce': pce, 'engine': engine}
 
+def get_port():
+    """Parse --port <N> from sys.argv, default 5000"""
+    for i, arg in enumerate(sys.argv):
+        if arg == '--port' and i + 1 < len(sys.argv):
+            try:
+                return int(sys.argv[i + 1])
+            except ValueError:
+                print(f"[!] Invalid port: {sys.argv[i + 1]}, using default 5000")
+    return 5000
+
 # ==========================================
 # Application Entry Point
 # ==========================================
 if __name__ == "__main__":
     core_system = init_core()
+    port = get_port()
 
     if "--monitor" in sys.argv:
-        print("[*] Service Started (Daemon mode).")
-        # Load check interval from env or default to 300s
+        print(f"[*] Service Started (Daemon mode).")
         interval = int(os.environ.get("ILLUMIO_CHECK_INTERVAL", 300))
         while True:
             try:
@@ -40,7 +50,7 @@ if __name__ == "__main__":
     elif "--gui" in sys.argv:
         try:
             from src.gui_ui import launch_gui
-            launch_gui(core_system)
+            launch_gui(core_system, port=port)
         except ImportError:
             print("[!] Web GUI requires Flask. Install with:")
             print("      pip install flask")

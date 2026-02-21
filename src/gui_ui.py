@@ -200,9 +200,8 @@ def create_app(core_system):
 # ==========================================
 # Entry Point
 # ==========================================
-def launch_gui(core_system):
+def launch_gui(core_system, port=5000):
     host = '127.0.0.1'
-    port = 5000
     app = create_app(core_system)
     url = f'http://{host}:{port}'
     print(f"[WebGUI] Starting at {url}")
@@ -495,6 +494,10 @@ tr.selected { background: #1c3a5e !important; }
   <button class="tab-btn" onclick="showTab('schedules')">⏱ Schedules</button>
   <button class="tab-btn" onclick="showTab('logs')">📜 Logs & Check</button>
   <button class="tab-btn" onclick="showTab('settings')">⚙ Settings</button>
+</div>
+
+<div style="padding:6px 20px;font-size:12px;color:var(--fg-dim);background:var(--bg-panel);border-bottom:1px solid var(--border)">
+  Hint: <span style="color:#f0a500">★</span> = RuleSet scheduled &nbsp;&nbsp; <span style="color:#58a6ff">●</span> = Child rule only
 </div>
 
 <div class="content">
