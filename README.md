@@ -1,6 +1,6 @@
-# Illumio Rule Scheduler (v4.1.0)
+# Illumio Rule Scheduler (v4.2.0)
 
-![Version](https://img.shields.io/badge/Version-v4.1.0-blue)
+![Version](https://img.shields.io/badge/Version-v4.2.0-blue)
 ![Python](https://img.shields.io/badge/Python-3.8%2B-gold?logo=python&logoColor=white)
 ![Dependencies](https://img.shields.io/badge/Dependencies-Zero-brightgreen)
 
@@ -18,7 +18,7 @@ An automated rule scheduling tool for **Illumio Core (PCE)**. Supports both **GU
 |---|---|
 | 📅 **Recurring Schedule** | Enable/disable rules on a weekly schedule (supports cross-midnight, e.g. 22:00–06:00) |
 | ⏳ **Auto-Expiration** | One-time rules that auto-disable and self-delete after a set time |
-| 🖥️ **GUI + CLI** | Dark-themed Tkinter GUI for desktops; ANSI CLI for SSH/terminal |
+| 🖥️ **Web GUI + CLI** | Flask-powered Web GUI (auto-opens browser); ANSI CLI for SSH/terminal |
 | 👁️ **Dual Indicators** | ★ = RuleSet scheduled, ● = child rule scheduled |
 | 📝 **Note Integration** | Automatically writes schedule info into the Illumio rule Description field |
 | 🔄 **Live Sync** | Real-time PCE state verification during listing |
@@ -35,7 +35,7 @@ illumio_Rule-Scheduler/
 │   ├── __init__.py
 │   ├── core.py                   # Core engine (API, DB, scheduling logic)
 │   ├── cli_ui.py                 # CLI interactive interface
-│   └── gui_ui.py                 # Tkinter GUI (dark theme)
+│   └── gui_ui.py                 # Flask Web GUI (dark theme SPA)
 ├── deploy/
 │   ├── deploy_windows.ps1        # Windows NSSM service deployment
 │   └── illumio-scheduler.service # Linux systemd unit file
@@ -48,7 +48,10 @@ illumio_Rule-Scheduler/
 
 ## 🛠️ Installation
 
-**Only requirement**: Python 3.8+ (no `pip install` needed)
+**Core requirement**: Python 3.8+
+
+**Web GUI** (optional): `pip install flask`
+> CLI mode works without Flask. If Flask is not installed, the `--gui` flag will display install instructions instead.
 
 **Linux / macOS**:
 ```bash
@@ -56,10 +59,7 @@ sudo mkdir -p /opt/illumio_scheduler
 cd /opt/illumio_scheduler
 # Copy project files here
 chmod +x illumio_scheduler.py
-
-# Linux GUI Support (if using --gui):
-# Ubuntu/Debian: sudo apt install python3-tk
-# RHEL/Rocky:   sudo dnf install python3-tkinter
+pip install flask    # optional, for Web GUI only
 ```
 
 **Windows**:

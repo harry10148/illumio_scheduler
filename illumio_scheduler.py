@@ -38,9 +38,13 @@ if __name__ == "__main__":
             time.sleep(interval)
 
     elif "--gui" in sys.argv:
-        # Load the Tkinter GUI implementation
-        from src.gui_ui import launch_gui
-        launch_gui(core_system)
+        try:
+            from src.gui_ui import launch_gui
+            launch_gui(core_system)
+        except ImportError:
+            print("[!] Web GUI requires Flask. Install with:")
+            print("      pip install flask")
+            print("    CLI mode works without Flask.")
 
     else:
         # Default to CLI mode (backward compatibility)

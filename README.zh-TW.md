@@ -1,6 +1,6 @@
-# Illumio Rule Scheduler (v4.1.0)
+# Illumio Rule Scheduler (v4.2.0)
 
-![Version](https://img.shields.io/badge/Version-v4.1.0-blue)
+![Version](https://img.shields.io/badge/Version-v4.2.0-blue)
 ![Python](https://img.shields.io/badge/Python-3.8%2B-gold?logo=python&logoColor=white)
 ![Dependencies](https://img.shields.io/badge/Dependencies-Zero-brightgreen)
 
@@ -18,7 +18,7 @@
 |---|---|
 | 📅 **週期排程** | 指定星期與時段自動啟停規則（支援跨午夜，如 22:00–06:00） |
 | ⏳ **自動過期** | 設定失效時間，時間到後自動關閉並刪除排程 |
-| 🖥️ **GUI + CLI** | 桌面環境使用深色主題 GUI；SSH 環境使用 CLI 選單 |
+| 🖥️ **Web GUI + CLI** | Flask 驅動的 Web GUI（自動開啟瀏覽器）；SSH 環境使用 CLI 選單 |
 | 👁️ **雙重指標** | ★ = 規則集排程，● = 子規則排程 |
 | 📝 **Note 整合** | 自動將排程狀態寫入 Illumio Description 欄位 |
 | 🔄 **即時同步** | 列表時即時檢查 PCE 狀態 |
@@ -35,7 +35,7 @@ illumio_Rule-Scheduler/
 │   ├── __init__.py
 │   ├── core.py               # 核心引擎（API, DB, 排程邏輯）
 │   ├── cli_ui.py             # CLI 互動介面
-│   └── gui_ui.py             # Tkinter GUI（深色主題）
+│   └── gui_ui.py             # Flask Web GUI（深色主題 SPA）
 ├── deploy/
 │   ├── deploy_windows.ps1    # Windows NSSM 服務部署腳本
 │   └── illumio-scheduler.service  # Linux systemd unit
@@ -48,7 +48,10 @@ illumio_Rule-Scheduler/
 
 ## 🛠️ 安裝
 
-**唯一需求**：Python 3.8+（無需 `pip install` 任何套件）
+**基本需求**：Python 3.8+
+
+**Web GUI**（選用）：`pip install flask`
+> CLI 模式不需要 Flask。若未安裝 Flask，使用 `--gui` 時會顯示安裝指令。
 
 **Linux / macOS**：
 ```bash
@@ -56,10 +59,7 @@ sudo mkdir -p /opt/illumio_scheduler
 cd /opt/illumio_scheduler
 # 將專案檔案複製至此目錄
 chmod +x illumio_scheduler.py
-
-# Linux GUI 支援（若使用 --gui）：
-# Ubuntu/Debian: sudo apt install python3-tk
-# RHEL/Rocky:    sudo dnf install python3-tkinter
+pip install flask    # 選用，僅 Web GUI 需要
 ```
 
 **Windows**：

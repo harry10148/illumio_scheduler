@@ -379,9 +379,13 @@ class CLI:
                 elif ans == '4': self.engine.check(silent=False)
                 elif ans == '5':
                     if core_system:
-                        print(f"{Colors.BLUE}[*] 啟動 GUI...{Colors.RESET}")
-                        from src.gui_ui import launch_gui
-                        launch_gui(core_system)
+                        print(f"{Colors.BLUE}[*] 啟動 Web GUI...{Colors.RESET}")
+                        try:
+                            from src.gui_ui import launch_gui
+                            launch_gui(core_system)
+                        except ImportError:
+                            print(f"{Colors.RED}[!] Web GUI 需要 Flask。請先安裝：{Colors.RESET}")
+                            print(f"      pip install flask")
                     else:
                         print(f"{Colors.RED}[-] 無法啟動 GUI（core_system 未傳入）{Colors.RESET}")
                 elif ans.lower() in ['q', 'exit']: break
