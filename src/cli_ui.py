@@ -123,12 +123,21 @@ class CLI:
     # ==========================================
     def format_ruleset_row(self, idx, rs):
         r_count = len(rs.get('rules', []))
-        status = Colors.status(rs.get('enabled'))
-        rid = Colors.id(extract_id(rs['href']))
+        
+        # Format Status (apply color after padding)
+        is_en = rs.get('enabled')
+        st_text = "✔ ON" if is_en else "✖ OFF"
+        st_pad = f"{st_text:<8}"
+        status = f"{Colors.GREEN}{st_pad}{Colors.RESET}" if is_en else f"{Colors.RED}{st_pad}{Colors.RESET}"
+        
+        rid = Colors.id(f"{extract_id(rs['href']):<6}")
         name = truncate(rs['name'], 40)
         
+        # Format PROV (apply color after padding)
         ut = rs.get('update_type')
-        prov_state = f"{Colors.YELLOW}DRAFT{Colors.RESET}" if ut else f"{Colors.GREEN}ACTIVE{Colors.RESET}"
+        prov_text = "DRAFT" if ut else "ACTIVE"
+        prov_pad = f"{prov_text:<6}"
+        prov_state = f"{Colors.YELLOW}{prov_pad}{Colors.RESET}" if ut else f"{Colors.GREEN}{prov_pad}{Colors.RESET}"
         
         sType = self.db.get_schedule_type(rs)
         if sType == 1:
@@ -138,26 +147,33 @@ class CLI:
         else:
             mark = " "
         
-        return f"{idx:<4} | {mark} | {rid:<18} | {prov_state:<15} | {status:<15} | Rules:{r_count:<4} | {name}"
+        return f"{idx:<4} | {mark} | {rid} | {prov_state} | {status} | Rules:{str(r_count):<4} | {name}"
 
     def format_rule_row(self, idx, r):
-        rid = Colors.id(extract_id(r['href']))
+        rid = Colors.id(f"{extract_id(r['href']):<6}")
         raw_desc = r.get('description') or ""
         note = truncate(raw_desc, 30)
-        status = Colors.status(r.get('enabled'))
+        
+        is_en = r.get('enabled')
+        st_text = "✔ ON" if is_en else "✖ OFF"
+        st_pad = f"{st_text:<8}"
+        status = f"{Colors.GREEN}{st_pad}{Colors.RESET}" if is_en else f"{Colors.RED}{st_pad}{Colors.RESET}"
         
         dest_field = r.get('destinations', r.get('consumers', []))
         src = truncate(self.pce.resolve_actor_str(dest_field), 15)
         dst = truncate(self.pce.resolve_actor_str(r.get('providers', [])), 15)
         svc = truncate(self.pce.resolve_service_str(r.get('ingress_services', [])), 10)
         
+        # Format PROV
         ut = r.get('update_type')
-        prov_state = f"{Colors.YELLOW}DRAFT{Colors.RESET}" if ut else f"{Colors.GREEN}ACTIVE{Colors.RESET}"
+        prov_text = "DRAFT" if ut else "ACTIVE"
+        prov_pad = f"{prov_text:<6}"
+        prov_state = f"{Colors.YELLOW}{prov_pad}{Colors.RESET}" if ut else f"{Colors.GREEN}{prov_pad}{Colors.RESET}"
         
         is_sched = r['href'] in self.db.get_all()
         mark = Colors.mark_self() if is_sched else " " 
         
-        return f"{idx:<4} | {mark} | {rid:<18} | {prov_state:<15} | {status:<15} | {note:<30} | {src:<15} | {dst:<15} | {svc}"
+        return f"{idx:<4} | {mark} | {rid} | {prov_state} | {status} | {note:<30} | {src:<15} | {dst:<15} | {svc}"
 
     # ==========================================
     # Unified Schedule Management (List + Edit + Delete in one view)
@@ -331,7 +347,7 @@ class CLI:
 
         if not selected_rs:
             if not matches: return print(f"{Colors.RED}[-] {t('browse_no_result')}{Colors.RESET}")
-            header = f"{t('hdr_no'):<4} | {t('hdr_sch'):<1} | {t('hdr_id'):<8} | {'PROV':<15} | {t('hdr_status'):<6} | {t('hdr_rules'):<9} | {t('hdr_name')}"
+            header = f"{t('hdr_no'):<4} | {t('hdr_sch'):<1} | {t('hdr_id'):<6} | {'PROV':<6} | {t('hdr_status'):<8} | {t('hdr_rules'):<9} | {t('hdr_name')}"
             selected_rs = paginate_and_select(matches, self.format_ruleset_row, title="RuleSets", header_str=header)
             if not selected_rs: return
 
@@ -356,7 +372,7 @@ class CLI:
             rules = full_rs.get('rules', [])
             if not rules: return print(f"{Colors.RED}[-] {t('browse_no_rules')}{Colors.RESET}")
 
-            header = f"{t('hdr_no'):<4} | {t('hdr_sch'):<1} | {t('hdr_id'):<6} | {'PROV':<15} | {t('hdr_status'):<6} | {t('hdr_note'):<30} | {t('hdr_source'):<15} | {t('hdr_dest'):<15} | {t('hdr_service')}"
+            header = f"{t('hdr_no'):<4} | {t('hdr_sch'):<1} | {t('hdr_id'):<6} | {'PROV':<6} | {t('hdr_status'):<8} | {t('hdr_note'):<30} | {t('hdr_source'):<15} | {t('hdr_dest'):<15} | {t('hdr_service')}"
             r = paginate_and_select(rules, self.format_rule_row, title=f"Rules ({rs_name})", header_str=header)
             if not r: return
 
