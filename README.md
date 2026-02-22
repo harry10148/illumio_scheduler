@@ -12,7 +12,7 @@ An automated rule scheduling tool for **Illumio Core (PCE)**. Supports **Web GUI
 For comprehensive guides on how to install, configure, deploy, and operate the Illumio Rule Scheduler (including detailed explanations of the Web GUI layout, language translations, themes, and CLI modes), please refer to our official User Manuals located in the `docs` folder:
 
 - 🇺🇸 **English**: [docs/User_Manual_en.md](docs/User_Manual_en.md)
-- 🇹🇼 **Traditional Chinese (繁體中文)**: [docs/User_Manual_zh.md](docs/User_Manual_zh.md)
+- 🇹🇼 **繁體中文**: [docs/User_Manual_zh.md](docs/User_Manual_zh.md)
 
 ---
 
