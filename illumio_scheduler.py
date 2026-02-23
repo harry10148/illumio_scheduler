@@ -25,6 +25,26 @@ def init_core() -> dict:
     engine = ScheduleEngine(db, pce)
     return {'cfg': cfg, 'db': db, 'pce': pce, 'engine': engine}
 
+def resolve_port(args, core_system):
+    # Port resolution priority:
+    # 1. CLI Argument (--port) if not 5000
+    # 2. Environment Variable (ILLUMIO_PORT)
+    # 3. Config File (gui_port)
+    # 4. Default (5000)
+    
+    selected_port = args.port
+    
+    env_port = os.environ.get("ILLUMIO_PORT")
+    config_port = core_system['cfg'].config.get("gui_port")
+
+    if args.port == 5000:
+        if env_port:
+            selected_port = int(env_port)
+        elif config_port:
+            selected_port = int(config_port)
+    
+    return selected_port
+
 # ==========================================
 # Application Entry Point
 # ==========================================
@@ -40,6 +60,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     core_system = init_core()
+    selected_port = resolve_port(args, core_system)
 
     if args.monitor:
         print("[*] Service Started (Daemon mode).")
@@ -56,7 +77,8 @@ if __name__ == "__main__":
     elif args.gui:
         try:
             from src.gui_ui import launch_gui
-            launch_gui(core_system, port=args.port)
+            print(f"[*] Starting Web GUI on port {selected_port}")
+            launch_gui(core_system, port=selected_port)
         except ImportError:
             print("[!] Web GUI requires Flask. Install with:")
             print("      pip install flask")
@@ -66,4 +88,4 @@ if __name__ == "__main__":
         # Default to CLI mode (backward compatibility)
         from src.cli_ui import CLI
         cli_app = CLI(core_system)
-        cli_app.run(core_system=core_system)
+        cli_app.run(core_system=core_system, default_port=selected_port)

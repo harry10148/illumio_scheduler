@@ -637,7 +637,7 @@ class CLI:
     # ==========================================
     # Main Menu
     # ==========================================
-    def run(self, core_system=None):
+    def run(self, core_system=None, default_port=5000):
         if not self.check_config_ready(): 
             self.setup_config_ui()
             
@@ -658,10 +658,19 @@ class CLI:
                 elif ans == '2': self.engine.check(silent=False)
                 elif ans == '3':
                     if core_system:
+                        # Prompt for Port
+                        prompt_msg = t('gui_port_prompt').format(default=default_port)
+                        port_in = clean_input(input(prompt_msg))
+                        try:
+                            use_port = int(port_in) if port_in else default_port
+                        except ValueError:
+                            print(f"{Colors.RED}[!] {t('invalid_number')}{Colors.RESET}")
+                            continue
+
                         print(f"{Colors.BLUE}[*] {t('gui_starting')}{Colors.RESET}")
                         try:
                             from src.gui_ui import launch_gui
-                            launch_gui(core_system)
+                            launch_gui(core_system, port=use_port)
                         except ImportError:
                             print(f"{Colors.RED}[!] {t('gui_flask_missing')}{Colors.RESET}")
                             print(f"      pip install flask")

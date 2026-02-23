@@ -105,7 +105,6 @@ _STRINGS = {
         'list_conn_fail': '(Connection failed)',
         'list_rule_deleted': '[Deleted] (Rule invalid)',
         
-        # Actions
         'action_enable_in_window': 'Enable in window',
         'action_disable_in_window': 'Disable in window',
         'action_everyday': 'Everyday',
@@ -155,6 +154,7 @@ _STRINGS = {
         
         # Web GUI
         'gui_starting': 'Starting Web GUI...',
+        'gui_port_prompt': 'Enter Port to use (Enter for default: {default}):',
         'gui_flask_missing': 'Web GUI requires Flask. Install with:',
         'gui_no_core': 'Cannot start GUI (core_system not passed)',
         'gui_title': 'Illumio Rule Scheduler',
@@ -176,6 +176,8 @@ _STRINGS = {
         'gui_browse_rules_title': 'Select a RuleSet...',
         'gui_browse_sch_btn': '+ Schedule Selected',
         'gui_browse_th_desc': 'DESC',
+        'gui_browse_th_status': 'STATUS',
+        'gui_browse_th_sch': 'SCH',
         'gui_browse_th_src': 'SRC',
         'gui_browse_th_dest': 'DEST',
         'gui_browse_th_svc': 'SERVICE',
@@ -209,8 +211,8 @@ _STRINGS = {
         'gui_modal_opt_rec': 'Recurring (Weekly)',
         'gui_modal_opt_one': 'One-Time Expiration',
         'gui_modal_action': 'Action',
-        'gui_modal_act_allow': 'Allow (enable in window)',
-        'gui_modal_act_block': 'Block (disable in window)',
+        'gui_modal_act_allow': 'Enable (ON in window)',
+        'gui_modal_act_block': 'Disable (OFF in window)',
         'gui_modal_days': 'Days',
         'gui_modal_start': 'Start (HH:MM)',
         'gui_modal_end': 'End (HH:MM)',
@@ -360,6 +362,7 @@ _STRINGS = {
         
         # Web GUI
         'gui_starting': '啟動 Web GUI...',
+        'gui_port_prompt': '請輸入要使用的 Port (直接按 Enter 使用預設值: {default}):',
         'gui_flask_missing': 'Web GUI 需要 Flask。請先安裝：',
         'gui_no_core': '無法啟動 GUI（core_system 未傳入）',
         'gui_title': 'Illumio 排程管理',
@@ -381,6 +384,8 @@ _STRINGS = {
         'gui_browse_rules_title': '請選擇規則集...',
         'gui_browse_sch_btn': '+ 排程選中項目',
         'gui_browse_th_desc': '描述',
+        'gui_browse_th_status': '啟動狀態',
+        'gui_browse_th_sch': '已排程',
         'gui_browse_th_src': '來源',
         'gui_browse_th_dest': '目的',
         'gui_browse_th_svc': '服務',

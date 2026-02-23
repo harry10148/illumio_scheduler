@@ -88,10 +88,14 @@ def create_app(core_system):
                 'href': href,
                 'id': extract_id(href),
                 'desc': truncate(r.get('description'), 50),
+                'desc_full': r.get('description', ''),
                 'enabled': r.get('enabled', False),
                 'src': truncate(pce.resolve_actor_str(dest), 30),
                 'dst': truncate(pce.resolve_actor_str(r.get('providers', [])), 30),
                 'svc': truncate(pce.resolve_service_str(r.get('ingress_services', [])), 25),
+                'src_full': pce.resolve_actor_str(dest),
+                'dst_full': pce.resolve_actor_str(r.get('providers', [])),
+                'svc_full': pce.resolve_service_str(r.get('ingress_services', [])),
                 'sch': 'star' if href in db.get_all() else '',
                 'is_ruleset': False,
                 'prov': r_prov,
@@ -103,8 +107,15 @@ def create_app(core_system):
     def api_schedules():
         data = db.get_all()
         result = []
+        core = app.config.get('CORE')
         for href, c in data.items():
             is_rs = c.get('is_ruleset', False)
+            
+            enabled_status = 'NA'
+            res = pce.get_live_item(href)
+            if res and res.status_code == 200:
+                enabled_status = res.json().get('enabled', False)
+            
             entry = {
                 'href': href,
                 'id': extract_id(href),
@@ -114,9 +125,13 @@ def create_app(core_system):
                 'src': 'NA' if is_rs else c.get('detail_src', 'All'),
                 'dst': 'NA' if is_rs else c.get('detail_dst', 'All'),
                 'svc': 'NA' if is_rs else c.get('detail_svc', 'All'),
+                'src_full': 'NA' if is_rs else c.get('detail_src_full', c.get('detail_src', 'All')),
+                'dst_full': 'NA' if is_rs else c.get('detail_dst_full', c.get('detail_dst', 'All')),
+                'svc_full': 'NA' if is_rs else c.get('detail_svc_full', c.get('detail_svc', 'All')),
+                'enabled': enabled_status,
             }
             if c.get('type') == 'recurring':
-                entry['action'] = 'ALLOW' if c.get('action') == 'allow' else 'BLOCK'
+                entry['action'] = 'ENABLE' if c.get('action') == 'allow' else 'DISABLE'
                 days = c.get('days', [])
                 d_str = 'Everyday' if len(days) == 7 else ','.join([d[:3] for d in days])
                 entry['timing'] = f"{d_str} {c.get('start','')}-{c.get('end','')}"
@@ -141,6 +156,9 @@ def create_app(core_system):
             'detail_dst': d.get('detail_dst', 'All'),
             'detail_svc': d.get('detail_svc', 'All'),
             'detail_name': d.get('name', ''),
+            'detail_src_full': d.get('detail_src_full', d.get('detail_src', 'All')),
+            'detail_dst_full': d.get('detail_dst_full', d.get('detail_dst', 'All')),
+            'detail_svc_full': d.get('detail_svc_full', d.get('detail_svc', 'All')),
         }
 
         try:
@@ -438,6 +456,10 @@ th {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   white-space: nowrap;
+  position: relative;
+  resize: horizontal;
+  overflow: hidden;
+  max-width: 50vw;
 }
 td {
   padding: 7px 12px;
@@ -583,6 +605,52 @@ tr.selected { background: #C2E2F0 !important; }
 .pagination button:hover { border-color: var(--accent); }
 .pagination button:disabled { opacity: 0.3; cursor: default; }
 .pagination .page-info { margin: 0 4px; }
+/* ── Detail Popup ── */
+.detail-popup-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 3000;
+  background: transparent;
+}
+.detail-popup {
+  position: fixed;
+  background: var(--bg-panel);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 12px 16px;
+  max-width: 480px;
+  min-width: 200px;
+  font-size: 13px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  z-index: 3001;
+  color: var(--fg);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.detail-popup .popup-title {
+  font-weight: 700;
+  color: var(--accent);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.detail-popup .popup-item {
+  padding: 2px 0;
+  color: var(--fg);
+}
+.clickable-cell {
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-decoration-color: var(--fg-dim);
+}
+.clickable-cell:hover {
+  color: var(--accent);
+  text-decoration: underline solid;
+  text-decoration-color: var(--accent);
+}
 </style>
 </head>
 <body>
@@ -622,7 +690,7 @@ tr.selected { background: #C2E2F0 !important; }
       <div class="pane-header"><span>{{ t('gui_browse_rs') }}</span><span id="rs-count" style="color:var(--fg-dim)">0 items</span></div>
       <div class="table-wrap" style="flex:1">
         <table>
-          <thead><tr><th style="width:10%">⚡</th><th style="width:50%">{{ t('gui_browse_th_name') }}</th><th style="width:15%">ID</th><th style="width:15%">{{ t('gui_browse_th_prov') }}</th><th style="width:10%">📅</th></tr></thead>
+          <thead><tr><th style="width:10%">{{ t('gui_browse_th_status') }}</th><th style="width:50%">{{ t('gui_browse_th_name') }}</th><th style="width:15%">ID</th><th style="width:15%">{{ t('gui_browse_th_prov') }}</th><th style="width:10%">{{ t('gui_browse_th_sch') }}</th></tr></thead>
           <tbody id="rs-table"></tbody>
         </table>
       </div>
@@ -635,7 +703,7 @@ tr.selected { background: #C2E2F0 !important; }
       <div class="pane-header"><span id="rules-title">{{ t('gui_browse_rules_title') }}</span><button class="btn btn-accent" onclick="openScheduleModal()">{{ t('gui_browse_sch_btn') }}</button></div>
       <div class="table-wrap" style="flex:1">
         <table>
-          <thead><tr><th>⚡</th><th>ID</th><th>{{ t('gui_browse_th_desc') }}</th><th>{{ t('gui_browse_th_src') }}</th><th>{{ t('gui_browse_th_dest') }}</th><th>{{ t('gui_browse_th_svc') }}</th><th>PROV</th><th>📅</th></tr></thead>
+          <thead><tr><th>{{ t('gui_browse_th_status') }}</th><th>ID</th><th>{{ t('gui_browse_th_desc') }}</th><th>{{ t('gui_browse_th_src') }}</th><th>{{ t('gui_browse_th_dest') }}</th><th>{{ t('gui_browse_th_svc') }}</th><th>PROV</th><th>{{ t('gui_browse_th_sch') }}</th></tr></thead>
           <tbody id="rules-table"><tr><td colspan="8" style="text-align:center;color:var(--fg-dim)">Empty</td></tr></tbody>
         </table>
       </div>
@@ -650,7 +718,7 @@ tr.selected { background: #C2E2F0 !important; }
     <button class="btn btn-danger" onclick="deleteSelectedSchedules()">{{ t('gui_sch_delete') }}</button>
   </div>
   <div class="table-wrap">
-    <table><thead><tr><th style="width:36px"><input type="checkbox" id="sch-select-all" onchange="toggleSchSelectAll(this)"></th><th style="width:50px">{{ t('gui_sch_th_type') }}</th><th>{{ t('gui_sch_th_rs') }}</th><th>{{ t('gui_sch_th_desc') }}</th><th>{{ t('gui_browse_th_src') }}</th><th>{{ t('gui_browse_th_dest') }}</th><th>{{ t('gui_browse_th_svc') }}</th><th style="width:70px">{{ t('gui_sch_th_action') }}</th><th>{{ t('gui_sch_th_timing') }}</th><th style="width:60px">ID</th></tr></thead>
+    <table><thead><tr><th style="width:36px"><input type="checkbox" id="sch-select-all" onchange="toggleSchSelectAll(this)"></th><th style="width:50px">{{ t('gui_sch_th_type') }}</th><th style="width:70px">{{ t('gui_browse_th_status') }}</th><th>{{ t('gui_sch_th_rs') }}</th><th>{{ t('gui_sch_th_desc') }}</th><th>{{ t('gui_browse_th_src') }}</th><th>{{ t('gui_browse_th_dest') }}</th><th>{{ t('gui_browse_th_svc') }}</th><th style="width:70px">{{ t('gui_sch_th_action') }}</th><th>{{ t('gui_sch_th_timing') }}</th><th style="width:60px">ID</th></tr></thead>
     <tbody id="sch-table"></tbody></table>
   </div>
 </div>
@@ -694,6 +762,13 @@ tr.selected { background: #C2E2F0 !important; }
 
 <!-- Toast Container -->
 <div class="toast-container" id="toast-container"></div>
+
+<!-- Detail Popup -->
+<div class="detail-popup-overlay" id="detail-popup-overlay" style="display:none" onclick="closeDetailPopup()"></div>
+<div class="detail-popup" id="detail-popup" style="display:none">
+  <div class="popup-title" id="detail-popup-title"></div>
+  <div id="detail-popup-content"></div>
+</div>
 
 <!-- Schedule Modal (hidden) -->
 <div class="modal-overlay" id="schedule-modal" style="display:none">
@@ -840,23 +915,45 @@ function renderRules(rules, rsName) {
   tb.innerHTML = '';
   rules.forEach((r, idx) => {
     const tr = document.createElement('tr');
+    const srcFull = (r.src_full || r.src) || '';
+    const dstFull = (r.dst_full || r.dst) || '';
+    const svcFull = (r.svc_full || r.svc) || '';
+    const hasSrc = srcFull && srcFull !== 'NA';
+    const hasDst = dstFull && dstFull !== 'NA';
+    const hasSvc = svcFull && svcFull !== 'NA';
+
     tr.innerHTML = `<td><span class="badge ${r.enabled?'badge-on':'badge-off'}">${r.enabled?'ON':'OFF'}</span></td>
       <td>${r.id}</td>
-      <td title="${r.desc}">${r.desc}</td>
-      <td title="${r.src}">${r.src}</td>
-      <td title="${r.dst}">${r.dst}</td>
-      <td title="${r.svc}">${r.svc}</td>
+      <td>${r.desc}</td>
+      <td data-field="src" class="${hasSrc?'clickable-cell':''}">${r.src}</td>
+      <td data-field="dst" class="${hasDst?'clickable-cell':''}">${r.dst}</td>
+      <td data-field="svc" class="${hasSvc?'clickable-cell':''}">${r.svc}</td>
       <td>${provBadge(r.prov)}</td>
       <td>${schIcon(r.sch)}</td>`;
+
+    // Attach click handlers directly (avoids inline onclick escaping issues)
+    const cells = tr.querySelectorAll('td[data-field]');
+    cells.forEach(td => {
+      const field = td.dataset.field;
+      const fullVal = field === 'src' ? srcFull : (field === 'dst' ? dstFull : svcFull);
+      const hasVal  = field === 'src' ? hasSrc  : (field === 'dst' ? hasDst  : hasSvc);
+      if (hasVal) {
+        td.addEventListener('click', (e) => {
+          e.stopPropagation();
+          showDetailPopup(e, field.toUpperCase(), fullVal);
+        });
+      }
+    });
+
     tr.onclick = () => {
       document.querySelectorAll('#rules-table tr').forEach(x => x.classList.remove('selected'));
       tr.classList.add('selected');
-      selectedRule = { href: r.href, name: r.desc, is_ruleset: r.is_ruleset, detail_rs: rsName, src: r.src, dst: r.dst, svc: r.svc, prov: r.prov };
+      selectedRule = { href: r.href, name: r.desc, is_ruleset: r.is_ruleset, detail_rs: rsName, src: r.src, dst: r.dst, svc: r.svc, src_full: srcFull, dst_full: dstFull, svc_full: svcFull, prov: r.prov };
     };
     tb.appendChild(tr);
     if (idx === 0) {
       tr.classList.add('selected');
-      selectedRule = { href: r.href, name: r.desc, is_ruleset: r.is_ruleset, detail_rs: rsName, src: r.src, dst: r.dst, svc: r.svc, prov: r.prov };
+      selectedRule = { href: r.href, name: r.desc, is_ruleset: r.is_ruleset, detail_rs: rsName, src: r.src, dst: r.dst, svc: r.svc, src_full: srcFull, dst_full: dstFull, svc_full: svcFull, prov: r.prov };
     }
   });
 }
@@ -902,6 +999,9 @@ async function saveSchedule() {
     detail_src: selectedRule.src,
     detail_dst: selectedRule.dst,
     detail_svc: selectedRule.svc,
+    detail_src_full: selectedRule.src_full,
+    detail_dst_full: selectedRule.dst_full,
+    detail_svc_full: selectedRule.svc_full,
     schedule_type: schType,
   };
   if (schType === 'recurring') {
@@ -930,16 +1030,33 @@ async function loadSchedules() {
     document.getElementById('sch-select-all').checked = false;
     data.forEach(s => {
       const tr = document.createElement('tr');
+      const hasSrc = s.src && s.src !== 'NA';
+      const hasDst = s.dst && s.dst !== 'NA';
+      const hasSvc = s.svc && s.svc !== 'NA';
       tr.innerHTML = `<td><input type="checkbox" class="sch-check" data-href="${s.href}"></td>
         <td>${s.type}</td>
+        <td><span class="badge ${s.enabled===true?'badge-on':(s.enabled===false?'badge-off':'')}">${s.enabled===true?'ON':(s.enabled===false?'OFF':'NA')}</span></td>
         <td title="${s.rs_name}">${s.rs_name}</td>
         <td title="${s.name}">${s.name}</td>
-        <td title="${s.src}">${s.src}</td>
-        <td title="${s.dst}">${s.dst}</td>
-        <td title="${s.svc}">${s.svc}</td>
-        <td><span class="badge ${s.action==='ALLOW'?'badge-on':(s.action==='BLOCK'?'badge-off':'')}">${s.action}</span></td>
+        <td data-field="src" class="${hasSrc?'clickable-cell':''}">${s.src}</td>
+        <td data-field="dst" class="${hasDst?'clickable-cell':''}">${s.dst}</td>
+        <td data-field="svc" class="${hasSvc?'clickable-cell':''}">${s.svc}</td>
+        <td><span class="badge ${s.action==='ENABLE'?'badge-on':(s.action==='DISABLE'?'badge-off':'')}">${s.action}</span></td>
         <td>${s.timing}</td><td>${s.id}</td>
         <td><button class="btn" style="padding:2px 6px;font-size:11px" onclick="editSchedule('${s.href}')">✎ Edit</button></td>`;
+        
+      const cells = tr.querySelectorAll('td[data-field]');
+      cells.forEach(td => {
+        const field = td.dataset.field;
+        const fullVal = field === 'src' ? s.src_full : (field === 'dst' ? s.dst_full : s.svc_full);
+        const hasVal  = field === 'src' ? hasSrc  : (field === 'dst' ? hasDst  : hasSvc);
+        if (hasVal) {
+          td.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showDetailPopup(e, field.toUpperCase(), fullVal);
+          });
+        }
+      });
       tb.appendChild(tr);
     });
   } catch(e) { toast('Failed: ' + e.message, 'error'); }
@@ -1050,6 +1167,34 @@ async function stopServer() {
   try { await fetch('/api/stop', {method:'POST'}); } catch(e) {}
   document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;flex-direction:column;gap:12px"><h2 style="color:var(--accent)">Server Stopped</h2><p style="color:var(--fg-dim)">You can close this tab.</p></div>';
 }
+
+// ━━━ Detail Popup ━━━
+function showDetailPopup(event, title, fullText) {
+  event.stopPropagation();
+  const popup = document.getElementById('detail-popup');
+  const overlay = document.getElementById('detail-popup-overlay');
+  const titleEl = document.getElementById('detail-popup-title');
+  const contentEl = document.getElementById('detail-popup-content');
+
+  // Parse comma-separated items
+  const items = fullText.split(',').map(s => s.trim()).filter(Boolean);
+  titleEl.textContent = title + ' (' + items.length + ' item' + (items.length!==1?'s':'') + ')';
+  contentEl.innerHTML = items.map(item => `<div class="popup-item">• ${item}</div>`).join('');
+
+  // Position near click
+  const x = Math.min(event.clientX, window.innerWidth - 500);
+  const y = Math.min(event.clientY + 12, window.innerHeight - 200);
+  popup.style.left = x + 'px';
+  popup.style.top = y + 'px';
+  popup.style.display = 'block';
+  overlay.style.display = 'block';
+}
+function closeDetailPopup() {
+  document.getElementById('detail-popup').style.display = 'none';
+  document.getElementById('detail-popup-overlay').style.display = 'none';
+}
+// Close popup on Escape key
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetailPopup(); });
 
 // ━━━ Resizer Logic ━━━
 let isResizing = false;
