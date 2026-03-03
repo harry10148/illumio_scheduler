@@ -37,7 +37,7 @@ def resolve_port(args, core_system):
     env_port = os.environ.get("ILLUMIO_PORT")
     config_port = core_system['cfg'].config.get("gui_port")
 
-    if args.port == 5000:
+    if args.port == 5002:
         if env_port:
             selected_port = int(env_port)
         elif config_port:
@@ -54,7 +54,7 @@ if __name__ == "__main__":
         epilog="If no arguments are provided, the CLI interactive menu will launch."
     )
     parser.add_argument("--gui", action="store_true", help="Launch the Web GUI mode")
-    parser.add_argument("--port", type=int, default=5000, help="Port for the Web GUI (default: 5000)")
+    parser.add_argument("--port", type=int, default=5002, help="Port for the Web GUI (default: 5002)")
     parser.add_argument("--monitor", action="store_true", help="Run in continuous background daemon mode")
     
     args = parser.parse_args()
@@ -64,7 +64,10 @@ if __name__ == "__main__":
 
     if args.monitor:
         print("[*] Service Started (Daemon mode).")
-        interval = int(os.environ.get("ILLUMIO_CHECK_INTERVAL", "300"))
+        # 優先順序：config.json → 環境變數 → 預設 300 秒(5 分鐘)
+        cfg_interval = core_system['cfg'].config.get('check_interval_seconds')
+        interval = int(cfg_interval or os.environ.get("ILLUMIO_CHECK_INTERVAL", "300"))
+        print(f"[*] Check interval: {interval} seconds ({interval // 60} min)")
         while True:
             try:
                 core_system['engine'].check(silent=True)

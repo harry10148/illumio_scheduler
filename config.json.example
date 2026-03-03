@@ -1,0 +1,13 @@
+{
+    "pce_url": "https://your-pce.example.com:8443",
+    "org_id": "1",
+    "api_key": "api_xxxxxxxxxxxxxxxx",
+    "api_secret": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "ssl_verify": true,
+    "check_interval_seconds": 300,
+    "lang": "en",
+    "alert_email": "",
+    "smtp_host": "",
+    "smtp_port": 587,
+    "smtp_auth": false
+}

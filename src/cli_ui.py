@@ -637,7 +637,7 @@ class CLI:
     # ==========================================
     # Main Menu
     # ==========================================
-    def run(self, core_system=None, default_port=5000):
+    def run(self, core_system=None, default_port=5002):
         if not self.check_config_ready(): 
             self.setup_config_ui()
             

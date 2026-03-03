@@ -1,145 +1,240 @@
-# Illumio Rule Scheduler User Manual
+# User Manual — Illumio Rule Scheduler
 
-Welcome to the User Manual for the Illumio Rule Scheduler. This document provides a complete guide on how to configure, operate, and deploy the application, along with examples and operational principles.
+🌐 [English](User_Manual_en.md) | [繁體中文](User_Manual_zh.md)
+
+---
 
 ## Table of Contents
-1. [Overview & Operating Principles](#overview--operating-principles)
-2. [Operating Modes](#operating-modes)
-    - [Web GUI Mode](#web-gui-mode)
-    - [CLI Mode](#cli-mode)
-    - [Daemon Mode](#daemon-mode)
-3. [Features & Capabilities](#features--capabilities)
-4. [Configuration](#configuration)
-5. [Schedule Examples](#schedule-examples)
-6. [Deployment Guide](#deployment-guide)
+
+1. [Prerequisites](#1-prerequisites)
+2. [Configuration](#2-configuration)
+3. [Running the Application](#3-running-the-application)
+4. [Web GUI Walkthrough](#4-web-gui-walkthrough)
+5. [CLI Walkthrough](#5-cli-walkthrough)
+6. [Deploying as a System Service](#6-deploying-as-a-system-service)
+7. [Troubleshooting](#7-troubleshooting)
 
 ---
 
-## Overview & Operating Principles
-The **Illumio Rule Scheduler** automates the enabling and disabling of Illumio policy rules and RuleSets on a predefined schedule. 
+## 1. Prerequisites
 
-### How it works
-1. **Targeting**: You select Illumio RuleSets or child rules and define their active "windows" or an "expiration" time.
-2. **Monitoring Engine**: A daemon runs in the background. By default, it wakes up every 300 seconds (5 minutes) to evaluate all schedules.
-3. **Execution**: If the current time falls inside a configured schedule window, the engine ensures the object is set to `enabled=True` via the PCE REST API. If it is outside the window, it sets it to `enabled=False`.
-4. **Provisioning**: The script utilizes Illumio API's dependency-aware endpoints. Before issuing a provision command, it securely discovers all object dependencies, mitigating "unprovisioned dependencies" errors.
-5. **Transparency**: The scheduler will append a note with the text `[📅 Schedule: ...]` or `[⏳ Expiration: ...]` into the `description` field of the managed object on the PCE so administrators have visibility in the native console.
+| Requirement | Details |
+|-------------|---------|
+| Python | 3.7 or higher |
+| Flask | Optional — only for Web GUI mode (`pip install flask`) |
+| PCE API Key | Must have **Ruleset Provisioner** or **Global Organization Owner** role |
+| Network | HTTPS access to the PCE (default port 8443) |
+
+### Creating an API Key
+
+1. Log in to the Illumio PCE web console.
+2. Navigate to **Settings → API Keys → Add**.
+3. Note down the **API Key ID** and **API Secret** (the secret is shown only once).
+4. Ensure the key has at minimum **Ruleset Provisioner** permissions.
 
 ---
 
-## Operating Modes
+## 2. Configuration
 
-There are three main ways to interact with the application.
+### Quick Setup
+
+```bash
+cp config.json.example config.json
+```
+
+Edit `config.json` with your PCE credentials:
+
+```json
+{
+    "pce_url": "https://your-pce.example.com:8443",
+    "org_id": "1",
+    "api_key": "api_xxxxxxxxxxxxxxxx",
+    "api_secret": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "ssl_verify": true,
+    "lang": "en"
+}
+```
+
+### Configuration Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `pce_url` | ✅ | Full PCE URL with port (e.g., `https://pce.company.com:8443`) |
+| `org_id` | ✅ | Organization ID (usually `1`) |
+| `api_key` | ✅ | API Key ID from the PCE |
+| `api_secret` | ✅ | API Secret (stored in plaintext — secure file permissions) |
+| `ssl_verify` | ❌ | Set to `false` for self-signed certificates (default: `true`) |
+| `check_interval_seconds` | ❌ | Schedule engine check interval in seconds (default: `300` = 5 min) |
+| `lang` | ❌ | UI language: `"en"` (English) or `"zh"` (繁體中文) |
+| `alert_email` | ❌ | Email address for schedule trigger notifications |
+| `smtp_host` | ❌ | SMTP server hostname |
+| `smtp_port` | ❌ | SMTP server port (default: `587`) |
+| `smtp_auth` | ❌ | Enable SMTP authentication (`true`/`false`) |
+
+### Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `ILLUMIO_PORT` | Override default Web GUI port (default: `5002`) |
+| `ILLUMIO_CHECK_INTERVAL` | Override schedule check interval in seconds (fallback if `check_interval_seconds` not set in config.json) |
+
+---
+
+## 3. Running the Application
 
 ### Web GUI Mode
-Launch the Flask-powered Web GUI for a complete visual experience:
+
 ```bash
-python illumio_scheduler.py --gui --port 5000
+python illumio_scheduler.py --gui
+python illumio_scheduler.py --gui --port 8080   # custom port
 ```
-- **Browse & Add**: Navigate through RuleSets and assign schedules visually. The left pane is fully resizable and the application naturally spans ultrawide monitors.
-- **Schedules Tab**: Review your master list of scheduled policies. Select multiple items to bulk delete.
-- **Logs**: A terminal view straight from your browser to manually execute a run and observe logs.
-- **Settings**: Safely store PCE API tokens, select your UI language (English/Chinese), and toggle Light/Dark Mode.
+
+Opens a browser automatically at `http://localhost:5002`.
 
 ### CLI Mode
-For SSH/terminal environments without graphical support.
+
 ```bash
 python illumio_scheduler.py
 ```
-This drops you into an interactive menu:
-```text
-=== Illumio Scheduler ===
-0. Settings
-1. Schedule Management (Browse/List/Edit/Delete)
-2. Run Check Now
-3. Open Web GUI
-q. Quit
-```
-You can type `a` in Schedule Management to add new schedules, or `e <ID>` to edit the time windows.
+
+Launches an interactive terminal menu.
 
 ### Daemon Mode
-For background execution, ensuring schedules are constantly monitored and applied.
+
 ```bash
 python illumio_scheduler.py --monitor
 ```
-*Note: Consult the [Deployment Guide](#deployment-guide) for running this permanently as a service.*
+
+Runs the schedule engine continuously, checking every 300 seconds (5 min) by default. You can adjust this via `check_interval_seconds` in `config.json`.
 
 ---
 
-## Features & Capabilities
+## 4. Web GUI Walkthrough
 
-- **Recurring Schedules**: Set rules to be active only on certain days of the week between specific hours.
-  - *Example*: Monday to Friday, 08:00 to 18:00.
-  - Supports cross-midnight shifts (e.g., 22:00 to 06:00).
-- **One-Time Expirations**: Set a specific date and time for a rule to expire. After that time passes, the rule is disabled and the schedule is automatically purged from the local database.
-- **Draft Safety**: The scheduler will not try to schedule a rule that hasn't been provisioned yet.
-- **i18n Translation & Theming**: Completely bilingual support (English & Traditional Chinese) and both visually stunning Light/Dark themes derived from Illumio Brand Guidelines natively into the Web GUI.
+### Tab 1: Browse & Add Schedules
 
----
+1. **Browse RuleSets** — The left pane lists all rulesets from the PCE. Use the search bar to filter by name.
+2. **View Rules** — Click a ruleset to expand its rules in the right pane.
+3. **Add Schedule** — Click a rule or ruleset row, then click **"+ Add Schedule"** to open the scheduling modal.
 
-## Configuration
+#### Creating a Recurring Schedule
 
-To communicate with the Illumio PCE, open the Settings menu (via the Web GUI or CLI Menu #0) and enter the following keys. These are securely saved in `config.json`.
+1. Select **Schedule Type: Recurring**.
+2. Choose **Action**:
+   - *Enable in Window* — Rule is ON during the time window, OFF outside.
+   - *Disable in Window* — Rule is OFF during the time window, ON outside.
+3. Enter **Days** (comma-separated): `Monday,Tuesday,Wednesday,Thursday,Friday`
+4. Enter **Start Time** and **End Time**: e.g., `08:00` and `18:00`
+5. Click **Save**.
 
-| Field | Description |
-|---|---|
-| **PCE URL** | Full FQDN of your PCE (e.g. `https://pce.local:8443`) |
-| **Org ID** | Your Organization ID (usually `1`) |
-| **API Key** | Generated from your user profile on the PCE (`api_xxx`) |
-| **API Secret** | Generated alongside the API Key |
+#### Creating a One-Time Expiration
 
-*Requirement*: Your API Key must have at least **Ruleset Provisioner** or **Global Organization Owner** privileges.
+1. Select **Schedule Type: One-Time Expiration**.
+2. Enter **Expiration Date/Time**: e.g., `2025-12-31 23:59`
+3. Click **Save**.
 
----
+### Tab 2: Scheduled Tasks
 
-## Schedule Examples
+View all configured schedules. You can:
+- See current enabled/disabled status
+- Delete schedules (select rows → click **Delete Selected**)
 
-### Example 1: Standard Office Hours Access
-You want a RuleSet to only be active while developers are in the office.
-- **Target**: RuleSet `Dev Access`
-- **Type**: Recurring
-- **Action**: Allow (Enable in window)
-- **Days**: Monday, Tuesday, Wednesday, Thursday, Friday
-- **Start**: `08:00` | **End**: `18:00`
-- **Result**: RuleSet is ON from 8 AM to 6 PM on weekdays. OFF at all other times.
+### Tab 3: Run Engine
 
-### Example 2: Temporary Vendor Access
-A vendor needs access until the end of the month.
-- **Target**: RuleSet `Vendor RDP`
-- **Type**: One-Time Expiration
-- **Expire At**: `2025-12-31 23:59`
-- **Result**: RuleSet is left ON until midnight on Dec 31st, 2025. After that, the rule is disabled and removed from the watch list.
+Click **"Run Check Now"** to manually trigger the schedule engine. The log panel shows what actions were executed.
+
+### Tab 4: Settings
+
+Update PCE connection settings and language preference without editing `config.json` manually.
 
 ---
 
-## Deployment Guide
+## 5. CLI Walkthrough
 
-To ensure high availability, use the supplied deployment scripts located in the `deploy/` directory.
+The CLI presents a numbered menu:
 
-### Windows
-We utilize NSSM to run the python script as a native Windows service.
-1. Download `nssm.exe`.
-2. Open PowerShell as Administrator.
-3. Run:
-   ```powershell
-   .\deploy\deploy_windows.ps1 -NssmPath "C:\path\to\nssm.exe"
-   ```
-4. A Windows Service named `IllumioScheduler` will be created and started. It automatically handles error logging and restarts.
+```
+========== Illumio Rule Scheduler ==========
+1. Browse & Manage RuleSets
+2. View Scheduled Tasks
+3. Run Schedule Check Now
+4. Settings
+5. Exit
+=============================================
+```
 
-### Linux
-We provide a standard Systemd unit file.
-1. Copy the unit file:
+### Browse & Manage
+
+1. Select option `1` to list all rulesets.
+2. Enter the ID of a ruleset to view its rules.
+3. Select a rule and choose an action:
+   - Add Recurring Schedule
+   - Add One-Time Expiration
+   - Remove Schedule
+
+### Run Check
+
+Select option `3` to immediately run the schedule engine and see results.
+
+---
+
+## 6. Deploying as a System Service
+
+### Windows (NSSM)
+
+Use the provided PowerShell script:
+
+```powershell
+.\deploy\deploy_windows.ps1
+```
+
+This installs the scheduler as a Windows service using [NSSM](https://nssm.cc/).
+
+### Linux (systemd)
+
+1. Copy the service file:
    ```bash
    sudo cp deploy/illumio-scheduler.service /etc/systemd/system/
    ```
-2. Enable and start the service:
+2. Edit the service file to set correct paths.
+3. Enable and start:
    ```bash
-   sudo systemctl daemon-reload
-   sudo systemctl enable --now illumio-scheduler
-   ```
-3. Watch the logs:
-   ```bash
-   sudo journalctl -u illumio-scheduler -f
+   sudo systemctl enable illumio-scheduler
+   sudo systemctl start illumio-scheduler
    ```
 
-*End of Document*
+---
+
+## 7. Troubleshooting
+
+### Cannot connect to PCE
+
+- Verify `pce_url` includes the port (e.g., `:8443`).
+- If using self-signed certificates, set `"ssl_verify": false`.
+- Ensure the API Key has not expired.
+
+### Rules not being toggled
+
+- Check that the API Key has **Ruleset Provisioner** or higher permissions.
+- Verify the schedule is correctly configured (check the **Scheduled Tasks** tab).
+- Run the engine manually to see detailed logs.
+
+### GET returns fewer rulesets than expected
+
+- The tool uses `max_results=10000` to overcome the PCE's 500-item default limit.
+- If you have more than 10,000 rulesets, contact your PCE administrator.
+
+### Web GUI won't start
+
+- Ensure Flask is installed: `pip install flask`
+- Check if the port is already in use: try `--port 8080`
+
+---
+
+## Related Documentation
+
+| Document | Description |
+|----------|-------------|
+| [Overview](README_en.md) | Program introduction and features |
+| [Architecture](Architecture_en.md) | Code structure and extension guide |
+| [API Cookbook](API_Cookbook_en.md) | Python examples for Illumio API automation |

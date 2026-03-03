@@ -1,55 +1,37 @@
-# Illumio Rule Scheduler
+# 🕒 Illumio Rule Scheduler
 
-![Version](https://img.shields.io/badge/Version-1.0.0-blue)
-![Python](https://img.shields.io/badge/Python-3.8%2B-gold?logo=python&logoColor=white)
+**Automate the enable/disable of Illumio PCE security policy rules and rulesets on a schedule.**
 
-An automated rule scheduling tool for **Illumio Core (PCE)**. Supports **Web GUI**, **CLI**, and **Daemon** modes. Core engine uses only Python standard library — Flask is the only optional dependency (for Web GUI only).
-
----
-
-## 📖 Complete Documentation & Manuals
-
-For comprehensive guides on how to install, configure, deploy, and operate the Illumio Rule Scheduler (including detailed explanations of the Web GUI layout, language translations, themes, and CLI modes), please refer to our official User Manuals located in the `docs` folder:
-
-- 🇺🇸 **English**: [docs/User_Manual_en.md](docs/User_Manual_en.md)
-- 🇹🇼 **繁體中文**: [docs/User_Manual_zh.md](docs/User_Manual_zh.md)
+自動化啟用／停用 Illumio PCE 安全策略規則和規則集的排程工具。
 
 ---
 
-## ⚡ Quick Start / Installation
+## 📖 Documentation / 文件
 
-**Requirement**: Python 3.8+
-**Web GUI (Optional)**: `pip install flask`
+| Document | English | 繁體中文 |
+|----------|---------|----------|
+| **Overview & Introduction** | [README_en.md](docs/README_en.md) | [README_zh.md](docs/README_zh.md) |
+| **User Manual** | [User_Manual_en.md](docs/User_Manual_en.md) | [User_Manual_zh.md](docs/User_Manual_zh.md) |
+| **Architecture & Specs** | [Architecture_en.md](docs/Architecture_en.md) | [Architecture_zh.md](docs/Architecture_zh.md) |
+| **API Cookbook** | [API_Cookbook_en.md](docs/API_Cookbook_en.md) | [API_Cookbook_zh.md](docs/API_Cookbook_zh.md) |
 
-**Linux / macOS**:
+---
+
+## ⚡ Quick Start
+
 ```bash
-sudo mkdir -p /opt/illumio_scheduler
-cd /opt/illumio_scheduler
-chmod +x illumio_scheduler.py
-```
+# 1. Clone
+git clone <repo-url> && cd illumio_Rule-Scheduler
 
-**Windows**:
-1. Install [Python 3](https://www.python.org/downloads/) (check "Add to PATH")
-2. Place the project directory anywhere (e.g. `C:\illumio_scheduler`)
+# 2. Configure
+cp config.json.example config.json
+# Edit config.json with your PCE URL, Org ID, API Key, and API Secret
 
-### Run the App
-Launch the Flask-powered Web GUI for a complete visual experience:
-```bash
-python illumio_scheduler.py --gui --port 5000
+# 3. Run (choose one)
+python illumio_scheduler.py              # CLI interactive mode
+python illumio_scheduler.py --gui        # Web GUI (requires: pip install flask)
+python illumio_scheduler.py --monitor    # Daemon mode (background monitoring)
 ```
-*(The native Web GUI seamlessly supports full ultra-wide responsiveness and Light/Dark themes derived directly from Illumio brand guidelines).*
-
-If running in a pure terminal environment via SSH:
-```bash
-python illumio_scheduler.py
-```
-
-### Run as a Background Daemon
-To deploy permanently as a service monitor (so schedules apply continuously):
-```bash
-python illumio_scheduler.py --monitor
-```
-*(See the [User Manual](docs/User_Manual_en.md) for Windows NSSM and Linux Systemd daemon scripts).*
 
 ---
 
@@ -57,21 +39,21 @@ python illumio_scheduler.py --monitor
 
 ```
 illumio_Rule-Scheduler/
-├── illumio_scheduler.py          # Entry point (CLI / GUI / Daemon)
+├── illumio_scheduler.py      # Entry point
+├── config.json               # PCE connection settings (user-created)
+├── config.json.example       # Example configuration
+├── rule_schedules.json       # Local schedule database (auto-generated)
 ├── src/
-│   ├── core.py                   # Core engine (API, DB, scheduling logic)
-│   ├── cli_ui.py                 # CLI interactive interface
-│   ├── gui_ui.py                 # Flask Web GUI (dark/light theme SPA)
-│   └── i18n.py                   # Internationalisation (EN/ZH string tables)
-├── deploy/                       # Systemd & NSSM Deployment scripts
-├── docs/                         
-│   ├── User_Manual_en.md         # English User Manual
-│   └── User_Manual_zh.md         # Traditional Chinese User Manual
-└── README.md
+│   ├── core.py               # Core engine: API client, scheduler, config
+│   ├── cli_ui.py             # CLI interactive interface
+│   ├── gui_ui.py             # Flask Web GUI (SPA)
+│   └── i18n.py               # Internationalization strings (EN/ZH)
+├── docs/                     # Documentation (EN + ZH)
+└── deploy/                   # Service deployment scripts (Windows/Linux)
 ```
 
 ---
 
-## 📄 License
+## 📜 License
 
-This project is provided as-is for internal use.
+MIT License
