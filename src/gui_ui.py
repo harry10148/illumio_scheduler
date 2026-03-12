@@ -296,15 +296,16 @@ _HTML_PAGE = r'''<!DOCTYPE html>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
 <style>
 :root {
   /* Light Mode - Refined */
   --bg-main: #F8FAFC;
-  --bg-panel: rgba(255, 255, 255, 0.7);
-  --bg-card: rgba(255, 255, 255, 0.5);
+  --bg-panel: rgba(255, 255, 255, 0.85); /* Increased opacity for clarity */
+  --bg-card: rgba(255, 255, 255, 0.9);
   --bg-input: #FFFFFF;
-  --fg: #1E293B;
-  --fg-dim: #64748B;
+  --fg: #0F172A; /* slate-900 */
+  --fg-dim: #475569; /* slate-600 */
   --accent: #FF5500;
   --accent-glow: rgba(255, 85, 0, 0.15);
   --accent2: #2D454C;
@@ -387,68 +388,78 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── Header ── */
+/* ── Header (Floating Navbar) ── */
 .header {
   background: var(--bg-panel);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--border);
-  padding: 16px 32px;
+  border: 1px solid var(--border);
+  padding: 12px 24px;
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 24px;
   position: sticky;
-  top: 0;
+  top: 16px;
+  margin: 0 16px 24px 16px;
+  border-radius: 16px;
   z-index: 100;
+  box-shadow: var(--shadow);
 }
-.header h1 { 
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.header-brand h1 { 
   font-family: var(--font-heading);
-  font-size: 20px; 
+  font-size: 18px; 
   color: var(--accent); 
   font-weight: 700; 
   letter-spacing: -0.02em;
+  margin: 0;
 }
-.header .version { font-size: 11px; color: var(--fg-dim); font-weight: 500; background: var(--border); padding: 2px 8px; border-radius: 20px; }
+.header .version { font-size: 11px; color: var(--fg-dim); font-weight: 500; background: var(--bg-card); padding: 2px 8px; border-radius: 20px; border: 1px solid var(--border); }
 .header .stop-btn {
   margin-left: auto;
   background: var(--red);
   color: #fff;
-  border: none;
-  padding: 6px 14px;
-  border-radius: var(--radius);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 16px;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
 }
-.header .stop-btn:hover { opacity: 0.85; }
+.header .stop-btn:hover { background: #DC2626; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3); transform: translateY(-1px); }
 
-/* ── Tabs ── */
+/* ── Tabs (Integrated in Header) ── */
 .tab-bar {
   display: flex;
-  background: var(--bg-panel);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border);
-  padding: 0 32px;
-  gap: 8px;
+  gap: 4px;
 }
 .tab-btn {
-  background: none;
+  background: transparent;
   border: none;
   color: var(--fg-dim);
-  padding: 14px 24px;
+  padding: 8px 16px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 600;
-  border-bottom: 3px solid transparent;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  letter-spacing: 0.01em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.tab-btn:hover { color: var(--fg); background: var(--accent-glow); }
-.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-btn:hover { color: var(--fg); background: var(--bg-card); }
+.tab-btn.active { color: var(--accent); background: var(--accent-glow); }
 
 /* ── Content ── */
-.content { padding: 20px 24px; width: 100%; }
+.content { padding: 0 24px 24px 24px; width: 100%; max-width: 1600px; margin: 0 auto; }
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
 
@@ -757,23 +768,29 @@ tr.selected { background: var(--accent-glow) !important; box-shadow: inset 4px 0
 </head>
 <body>
 
-<!-- Header -->
+<!-- Header & Tabs -->
 <div class="header">
-  <h1>🕒 {{ t('gui_title') }}</h1>
-  <span class="version">{{ t('gui_version') }}</span>
-  <button class="stop-btn" onclick="stopServer()">{{ t('gui_stop') }}</button>
+  <div class="header-brand">
+    <i data-lucide="clock" style="color:var(--accent);width:24px;height:24px;"></i>
+    <h1>{{ t('gui_title') }}</h1>
+    <span class="version">{{ t('gui_version') }}</span>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="showTab('browse')"><i data-lucide="search" style="width:18px;height:18px;"></i> {{ t('gui_tab_browse') }}</button>
+    <button class="tab-btn" onclick="showTab('schedules')"><i data-lucide="calendar" style="width:18px;height:18px;"></i> {{ t('gui_tab_schedules') }}</button>
+    <button class="tab-btn" onclick="showTab('logs')"><i data-lucide="terminal" style="width:18px;height:18px;"></i> {{ t('gui_tab_logs') }}</button>
+    <button class="tab-btn" onclick="showTab('settings')"><i data-lucide="settings" style="width:18px;height:18px;"></i> {{ t('gui_tab_settings') }}</button>
+  </div>
+
+  <button class="stop-btn" onclick="stopServer()"><i data-lucide="power" style="width:16px;height:16px;"></i> {{ t('gui_stop') }}</button>
 </div>
 
-<!-- Tabs -->
-<div class="tab-bar">
-  <button class="tab-btn active" onclick="showTab('browse')">{{ t('gui_tab_browse') }}</button>
-  <button class="tab-btn" onclick="showTab('schedules')">{{ t('gui_tab_schedules') }}</button>
-  <button class="tab-btn" onclick="showTab('logs')">{{ t('gui_tab_logs') }}</button>
-  <button class="tab-btn" onclick="showTab('settings')">{{ t('gui_tab_settings') }}</button>
-</div>
-
-<div style="padding:6px 20px;font-size:12px;color:var(--fg-dim);background:var(--bg-panel);border-bottom:1px solid var(--border)">
-  {{ t('gui_hint')|safe }}
+<div style="padding:0 24px 16px 24px; max-width:1600px; margin:0 auto; font-size:13px;color:var(--fg-dim);">
+  <div class="glass" style="padding:12px 16px; border-radius: var(--radius); display:flex; align-items:center; gap:8px;">
+    <i data-lucide="info" style="width:16px;height:16px;color:var(--accent)"></i> 
+    <span>{{ t('gui_hint')|safe }}</span>
+  </div>
 </div>
 
 <div class="content">
@@ -1340,6 +1357,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const themeSelect = document.getElementById('cfg-theme');
   if (themeSelect) themeSelect.value = savedTheme;
   loadAllRS(); 
+  lucide.createIcons();
 });
 
 </script>

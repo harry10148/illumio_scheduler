@@ -56,7 +56,7 @@ def paginate_and_select(items, format_func, title="", header_str=""):
         if page > 0: opts.append(f"(p){t('prev_page')}")
         opts.append(f"(q){t('back')}")
         
-        ans = clean_input(input(f"{prompt} [{' '.join(opts)}]: ")).lower()
+        ans = clean_input(input(f"{Colors.CYAN}❯{Colors.RESET} {prompt} [{' '.join(opts)}]: ")).lower()
 
         if ans in ['q', 'b', '0']: return None
         elif ans == 'n' and end < total: page += 1
@@ -98,18 +98,19 @@ class CLI:
             smtp_a = t('cfg_auth_on') if c.get('smtp_auth', True) else t('cfg_auth_off')
             smtp_str = f"{smtp_h}:{smtp_p} | Auth:{smtp_a}" if smtp_h else "Not Configured"
 
-            print(f"\n{Colors.HEADER}=== System Settings ==={Colors.RESET} {t('menu_version')}")
-            print(f"API URL : {url}")
-            print(f"API Key : {masked_key}")
-            print(f"{t('cfg_alerts_label')}  : {alert_str}")
-            print("-" * 40)
-            print(f"1. {t('cfg_api_title')} (URL, Key, Secret)")
-            print(f"2. {t('cfg_alert_title')}")
-            print(f"3. {t('cfg_ssl_title')} ({t('cfg_ssl_current')}: {ssl_str})")
-            print(f"4. {t('cfg_smtp_title')} ({smtp_str})")
-            print(f"0. {t('back')}")
+            print(f"\n{Colors.HEADER}╭── {Colors.BOLD}System Settings{Colors.RESET} {Colors.GREY}{t('menu_version')}{Colors.RESET}")
+            print(f"{Colors.HEADER}│{Colors.RESET} API URL : {url}")
+            print(f"{Colors.HEADER}│{Colors.RESET} API Key : {masked_key}")
+            print(f"{Colors.HEADER}│{Colors.RESET} {t('cfg_alerts_label')}  : {alert_str}")
+            print(f"{Colors.HEADER}├{'─' * 40}{Colors.RESET}")
+            print(f"{Colors.HEADER}│{Colors.RESET} 1. {t('cfg_api_title')} (URL, Key, Secret)")
+            print(f"{Colors.HEADER}│{Colors.RESET} 2. {t('cfg_alert_title')}")
+            print(f"{Colors.HEADER}│{Colors.RESET} 3. {t('cfg_ssl_title')} ({t('cfg_ssl_current')}: {ssl_str})")
+            print(f"{Colors.HEADER}│{Colors.RESET} 4. {t('cfg_smtp_title')} ({smtp_str})")
+            print(f"{Colors.HEADER}│{Colors.RESET} 0. {t('back')}")
+            print(f"{Colors.HEADER}╰{'─' * 40}{Colors.RESET}")
             
-            ans = clean_input(input(f"\n{t('select_prompt')}: "))
+            ans = clean_input(input(f"\n{Colors.CYAN}❯{Colors.RESET} {t('select_prompt')}: "))
             if ans == '0' or ans.lower() in ['q', 'b']: break
 
             if ans == '1':
@@ -213,7 +214,7 @@ class CLI:
         else:
             mark = " "
         
-        return f"{idx:<4} | {mark} | {rid} | {prov_state} | {status} | Rules:{str(r_count):<4} | {name}"
+        return f"{idx:<4} │ {mark} │ {rid} │ {prov_state} │ {status} │ Rules:{str(r_count):<4} │ {name}"
 
     def format_rule_row(self, idx, r):
         rid = Colors.id(f"{extract_id(r['href']):<6}")
@@ -239,7 +240,7 @@ class CLI:
         is_sched = r['href'] in self.db.get_all()
         mark = Colors.mark_self() if is_sched else " " 
         
-        return f"{idx:<4} | {mark} | {rid} | {prov_state} | {status} | {note:<30} | {src:<15} | {dst:<15} | {svc}"
+        return f"{idx:<4} │ {mark} │ {rid} │ {prov_state} │ {status} │ {note:<30} │ {src:<15} │ {dst:<15} │ {svc}"
 
     # ==========================================
     # Unified Schedule Management (List + Edit + Delete in one view)
@@ -250,10 +251,14 @@ class CLI:
             self._list_grouped()
             
             # Show inline commands
-            print(f"\n  {Colors.BOLD}{t('sch_hint')}: {Colors.YELLOW}★{Colors.RESET}={t('sch_hint_rs')}, {Colors.CYAN}●{Colors.RESET}={t('sch_hint_child')}")
-            print(f"  {Colors.GREEN}a{Colors.RESET}={t('sch_browse')}  |  {Colors.CYAN}e <ID>{Colors.RESET}={t('sch_edit')}  |  {Colors.RED}d <ID,ID,...>{Colors.RESET}={t('sch_delete')}  |  r=Refresh  |  q={t('sch_back')}")
+            # Show inline commands
+            print(f"\n{Colors.HEADER}╭── {Colors.BOLD}Commands{Colors.RESET}")
+            print(f"{Colors.HEADER}│{Colors.RESET} {Colors.BOLD}{t('sch_hint')}{Colors.RESET}: {Colors.YELLOW}★{Colors.RESET}={t('sch_hint_rs')}, {Colors.CYAN}●{Colors.RESET}={t('sch_hint_child')}")
+            print(f"{Colors.HEADER}│{Colors.RESET} {Colors.GREEN}a{Colors.RESET}={t('sch_browse')}  |  {Colors.CYAN}e <ID>{Colors.RESET}={t('sch_edit')}  |  {Colors.RED}d <ID,ID,...>{Colors.RESET}={t('sch_delete')}")
+            print(f"{Colors.HEADER}│{Colors.RESET} {Colors.CYAN}r{Colors.RESET}=Refresh  |  {Colors.CYAN}q{Colors.RESET}={t('sch_back')}")
+            print(f"{Colors.HEADER}╰{'─' * 40}{Colors.RESET}")
             
-            ans = clean_input(input(">> ")).strip()
+            ans = clean_input(input(f"{Colors.CYAN}❯{Colors.RESET} ")).strip()
             if ans.lower() in ['q', 'b', '']: return
             
             try:
@@ -486,9 +491,9 @@ class CLI:
             if conf.get('is_ruleset'): groups[rs_name]['rs_config'] = entry_data
             else: groups[rs_name]['rules'].append(entry_data)
                 
-        print("\n" + "="*145)
-        print(f"{t('hdr_sch'):<3} | {t('hdr_id'):<6} | {'Type':<6} | {t('hdr_note'):<25} | {t('hdr_source'):<12} | {t('hdr_dest'):<12} | {t('hdr_service'):<16} | {t('list_mode'):<10} | {t('list_timing')}")
-        print("-" * 145)
+        print("\n" + Colors.BLUE + "━"*145 + Colors.RESET)
+        print(f"{t('hdr_sch'):<3} │ {t('hdr_id'):<6} │ {'Type':<6} │ {t('hdr_note'):<25} │ {t('hdr_source'):<12} │ {t('hdr_dest'):<12} │ {t('hdr_service'):<16} │ {t('list_mode'):<10} │ {t('list_timing')}")
+        print(Colors.BLUE + "─" * 145 + Colors.RESET)
 
         for rs_name in sorted(groups.keys()):
             group = groups[rs_name]
@@ -521,11 +526,11 @@ class CLI:
                     mode = f"{Colors.RED}EXPIRE    {Colors.RESET}"
                     time_str = f"Until {c['expire_at'].replace('T', ' ')}"
 
-                print(f" {mark}  | {rid} | {'RS':<6} | {display_name} | {'-':<12} | {'-':<12} | {'-':<16} | {mode} | {time_str}")
+                print(f" {mark}  │ {rid} │ {'RS':<6} │ {display_name} │ {'-':<12} │ {'-':<12} │ {'-':<16} │ {mode} │ {time_str}")
             else:
                 if group['rules']:
                     name = truncate(f"[RS] {rs_name}", 25)
-                    print(f" {' ':1}  | {' ':6} | {'      '} | {Colors.BOLD}{Colors.GREY}{name:<25}{Colors.RESET} | {' ':12} | {' ':12} | {' ':16} | {' ':10} | {' '}")
+                    print(f" {' ':1}  │ {' ':6} │ {'      '} │ {Colors.BOLD}{Colors.GREY}{name:<25}{Colors.RESET} │ {' ':12} │ {' ':12} │ {' ':16} │ {' ':10} │ {' '}")
 
             for h, c, act in group['rules']:
                 rid = Colors.id(f"{extract_id(h):<6}")
@@ -574,9 +579,9 @@ class CLI:
                     mode = f"{Colors.RED}EXPIRE    {Colors.RESET}"
                     time_str = f"Until {c['expire_at'].replace('T', ' ')}"
                 
-                print(f" {mark}  | {rid} | {type_str} | {display_name} | {src:<12} | {dst:<12} | {svc:<16} | {mode} | {time_str}")
+                print(f" {mark}  │ {rid} │ {type_str} │ {display_name} │ {src:<12} │ {dst:<12} │ {svc:<16} │ {mode} │ {time_str}")
                 
-        print("="*145)
+        print(Colors.BLUE + "━"*145 + Colors.RESET)
 
     # ── Edit by ID ──
     def _edit_by_id(self, edit_id):
@@ -644,13 +649,15 @@ class CLI:
         self.pce.update_label_cache()
         
         while True:
-            print(f"\n{Colors.HEADER}=== {t('app_title')} ==={Colors.RESET}")
-            print(f"0. {t('menu_config')}")
-            print(f"1. {t('menu_schedule')}")
-            print(f"2. {t('menu_check')}")
-            print(f"3. {Colors.CYAN}{t('menu_webgui')}{Colors.RESET}")
-            print(f"q. {t('menu_quit')}")
-            ans = clean_input(input(">> "))
+            t_app_title = t('app_title')
+            print(f"\n{Colors.HEADER}╭── {Colors.BOLD}{t_app_title} {Colors.RESET}{Colors.GREY}[CLI]{Colors.RESET}")
+            print(f"{Colors.HEADER}│{Colors.RESET} 0. {t('menu_config')}")
+            print(f"{Colors.HEADER}│{Colors.RESET} 1. {t('menu_schedule')}")
+            print(f"{Colors.HEADER}│{Colors.RESET} 2. {t('menu_check')}")
+            print(f"{Colors.HEADER}│{Colors.RESET} 3. {Colors.CYAN}{t('menu_webgui')}{Colors.RESET}")
+            print(f"{Colors.HEADER}│{Colors.RESET} q. {t('menu_quit')}")
+            print(f"{Colors.HEADER}╰{'─' * 40}{Colors.RESET}")
+            ans = clean_input(input(f"{Colors.CYAN}❯{Colors.RESET} "))
             
             try:
                 if ans == '0': self.setup_config_ui()
